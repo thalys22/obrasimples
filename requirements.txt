@@ -2,5 +2,4 @@ Django==5.1.4
 whitenoise==6.8.2
 dj-database-url==2.3.0
 gunicorn==23.0.0
-# Para PostgreSQL, descomente a linha abaixo:
-# psycopg[binary]==3.2.3
+psycopg[binary]==3.2.3

@@ -50,7 +50,32 @@ O próprio usuário troca a senha dele pelo avatar → *Trocar senha*. Não há 
 
 ---
 
-## 3. Colocar no ar para testadores (PythonAnywhere)
+## 3. Colocar no ar na Vercel (recomendado)
+
+O site atualiza sozinho a cada envio ao GitHub. O banco é PostgreSQL (Neon), porque na Vercel arquivos gravados não ficam guardados e o SQLite perderia os dados.
+
+1. Em https://vercel.com/new, importe o repositório **thalys22/obrasimples**. A Vercel reconhece o Django sozinha.
+2. **Antes de clicar Deploy**, abra *Environment Variables* e crie:
+
+   | Nome | Valor |
+   |---|---|
+   | `DJANGO_SECRET_KEY` | uma frase longa e aleatória (50+ caracteres) |
+   | `DJANGO_SUPERUSER_USERNAME` | seu usuário de administrador, ex.: `thalys` |
+   | `DJANGO_SUPERUSER_EMAIL` | seu e-mail |
+   | `DJANGO_SUPERUSER_PASSWORD` | a senha do administrador (só você digita) |
+
+3. Clique **Deploy**. A primeira publicação **vai falhar** com a mensagem "Na Vercel é preciso um banco PostgreSQL". É esperado.
+4. No projeto, aba **Storage** → **Create Database** → **Neon** (Postgres) → plano gratuito → conecte ao projeto. Ele cria a variável `DATABASE_URL`.
+5. Aba **Deployments** → no último → **⋯ → Redeploy**. Agora a publicação cria as tabelas e o seu administrador.
+6. Abra o endereço `.vercel.app` do projeto e entre com o usuário e a senha do passo 2.
+
+Depois de entrar, você pode apagar a variável `DJANGO_SUPERUSER_PASSWORD` da Vercel. O usuário já foi criado e a senha fica guardada (criptografada) no banco.
+
+**Atualizar depois**: qualquer envio para a branch `main` do GitHub publica sozinho. Mudanças no banco (migrações) são aplicadas na publicação.
+
+**Backup**: o Neon tem restauração e cópias no painel dele. Também dá para exportar a obra em Excel pelo próprio app.
+
+## 4. Alternativa: PythonAnywhere
 
 O PythonAnywhere tem plano gratuito que roda Django e guarda o banco SQLite. É suficiente para a fase de testes. Confira no site as regras atuais do plano gratuito (por exemplo, renovações periódicas do site pelo painel).
 
@@ -100,11 +125,11 @@ O PythonAnywhere tem plano gratuito que roda Django e guarda o banco SQLite. É 
 
 ### Outros servidores
 
-Funciona em qualquer hospedagem Python (Render, Railway, uma VPS). Comando de início: `gunicorn config.wsgi`. Para usar PostgreSQL, descomente `psycopg` no `requirements.txt` e defina `DATABASE_URL`.
+Funciona em qualquer hospedagem Python (Render, Railway, uma VPS). Comando de início: `gunicorn config.wsgi`. Para usar PostgreSQL, defina `DATABASE_URL`.
 
 ---
 
-## 4. Variáveis de ambiente
+## 5. Variáveis de ambiente
 
 | Variável | Para quê |
 |---|---|
@@ -112,12 +137,13 @@ Funciona em qualquer hospedagem Python (Render, Railway, uma VPS). Comando de in
 | `DJANGO_DEBUG` | `1` só no seu computador. Em produção, deixe sem definir. |
 | `DJANGO_ALLOWED_HOSTS` | Domínio do site, ex.: `seuusuario.pythonanywhere.com` |
 | `DJANGO_CSRF_TRUSTED` | Mesmo domínio com `https://` na frente |
-| `DATABASE_URL` | Opcional. Sem ela usa SQLite. |
+| `DATABASE_URL` | Endereço do PostgreSQL. Na Vercel é obrigatória (o Neon preenche). Sem ela, fora da Vercel, usa SQLite. |
+| `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | Criam o administrador na primeira publicação (`build.py`). |
 | `DJANGO_SSL_REDIRECT` | `1` se o servidor não forçar HTTPS sozinho |
 
 ---
 
-## 5. Estrutura
+## 6. Estrutura
 
 ```
 config/            configurações do Django
@@ -126,11 +152,13 @@ obras/services.py  regras de negócio (tudo que altera dados passa por aqui)
 obras/views.py     API JSON usada pelo app (/api/...)
 obras/admin.py     painel de administração
 obras/tests.py     testes automáticos (python manage.py test obras)
+build.py           roda a cada publicação na Vercel: migrações e administrador
+pyproject.toml     dependências e configuração da Vercel
 frontend/app.html  o aplicativo (página única)
 templates/         telas de login e troca de senha
 ```
 
-## 6. Limites desta versão
+## 7. Limites desta versão
 
 - Uma obra por usuário. Várias obras por conta e equipe trabalhando na mesma obra ficam para a próxima fase.
 - Não há "esqueci minha senha" por e-mail: o administrador redefine.
