@@ -85,6 +85,9 @@ DATABASES = {
     "default": dj_database_url.parse(_db_url, conn_max_age=0 if NA_VERCEL else 600, ssl_require=NA_VERCEL)
     if _db_url else dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 }
+if NA_VERCEL:
+    # O endereço do Neon passa por um pooler (PgBouncer em modo transação): sem cursores no servidor
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
