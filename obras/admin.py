@@ -20,11 +20,30 @@ class PorObra(admin.ModelAdmin):
 
 @admin.register(Obra)
 class ObraAdmin(admin.ModelAdmin):
-    list_display = ("nome", "dono", "prazo", "servicos", "total_orcado", "exemplo", "atualizada_em")
-    list_filter = ("exemplo",)
+    list_display = ("nome", "dono", "compartilhada_com", "prazo", "servicos", "total_orcado", "exemplo", "atualizada_em")
+    list_filter = ("exemplo", "dono")
     search_fields = ("nome", "dono__username", "dono__first_name", "dono__email")
     readonly_fields = ("criada_em", "atualizada_em")
+    filter_horizontal = ("membros",)
+    autocomplete_fields = ("dono",)
     actions = ["recarregar_exemplo", "zerar_obra"]
+    fieldsets = (
+        ("Quem acessa esta obra", {
+            "fields": ("dono", "membros"),
+            "description": "<b>Dono</b>: responsável pela obra; é quem pode apagar todos os dados dela ou importar planilha. "
+                           "<b>Outros usuários com acesso</b>: também abrem a obra e fazem lançamentos. "
+                           "Uma pessoa pode ter várias obras; no app ela troca pelo seletor no topo. "
+                           "Para criar uma obra para alguém, clique em <i>Adicionar obra</i>, escolha o dono e salve: "
+                           "a obra começa vazia.",
+        }),
+        ("Dados da obra", {"fields": ("nome", "cliente", "prazo", "valor_contratado", "exemplo")}),
+        ("Datas", {"fields": ("criada_em", "atualizada_em"), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Compartilhada com")
+    def compartilhada_com(self, o):
+        nomes = [u.get_full_name() or u.username for u in o.membros.all()]
+        return ", ".join(nomes) or "—"
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("dono").annotate(n_itens=Count("orcamento", distinct=True))

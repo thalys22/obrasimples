@@ -23,4 +23,5 @@ urlpatterns = [
     path("api/pagamentos/<int:pk>", v.pagamento_excluir),
     path("api/recomecar", v.recomecar),
     path("api/importar", v.importar),
+    path("api/obra/selecionar", v.selecionar_obra),
 ]

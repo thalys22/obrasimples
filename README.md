@@ -43,6 +43,8 @@ Entre em **/admin** (ou pelo seu avatar no canto superior direito → *Administr
 | Bloquear o acesso | Abra o usuário e desmarque **Ativo**. Ele não consegue mais entrar e os dados dele ficam guardados. |
 | Trocar a senha de alguém | Abra o usuário → link *"este formulário"* no campo Senha. |
 | Dar acesso ao /admin para outra pessoa | Marque **Membro da equipe** (vê o admin) e, se quiser, **Superusuário** (pode tudo). |
+| Vincular uma obra a alguém | *Obras* → abra a obra → escolha o **Dono** ou adicione a pessoa em **Outros usuários com acesso**. Para uma obra nova, *Adicionar obra*, escolha o dono e salve (ela começa vazia). |
+| Entender cada permissão | Abra o usuário: a seção *Acesso ao painel de administração* explica Membro da equipe, Superusuário, Grupos e Permissões. |
 | Ver a obra de um testador | *Obras* lista todas, com dono e total orçado. Notas, consumos, medições e pagamentos têm filtro **por usuário** na lateral. |
 | Zerar ou recarregar o exemplo de uma obra | Em *Obras*, marque a obra, escolha a ação no menu *Ação* e clique *Ir*. |
 
@@ -160,6 +162,6 @@ templates/         telas de login e troca de senha
 
 ## 7. Limites desta versão
 
-- Uma obra por usuário. Várias obras por conta e equipe trabalhando na mesma obra ficam para a próxima fase.
+- Todos os usuários com acesso a uma obra têm os mesmos poderes nela (exceto apagar tudo e importar, que são só do dono). Papéis por módulo (engenharia, suprimentos, financeiro) ficam para a próxima fase.
 - Não há "esqueci minha senha" por e-mail: o administrador redefine.
 - Não há histórico de quem alterou o quê, além de quem aprovou cada medição.

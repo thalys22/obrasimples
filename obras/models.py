@@ -7,8 +7,17 @@ D0 = Decimal("0")
 
 
 class Obra(models.Model):
-    """Uma obra pertence a um usuário. No MVP cada usuário tem uma obra."""
-    dono = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="obras")
+    """Uma obra tem um dono e, opcionalmente, outros usuários com acesso a ela."""
+    dono = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="obras",
+        help_text="Responsável pela obra. É o único (além do administrador) que pode apagar todos os dados dela ou importar planilha por cima.",
+    )
+    membros = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="obras_compartilhadas",
+        verbose_name="outros usuários com acesso",
+        help_text="Essas pessoas também abrem esta obra no app e podem lançar notas, consumos, medições e pagamentos. "
+                  "Se a pessoa tiver mais de uma obra, ela troca de obra pelo seletor no topo do app.",
+    )
     nome = models.CharField(max_length=200, default="Minha obra")
     cliente = models.CharField(max_length=200, blank=True)
     prazo = models.DateField(null=True, blank=True)

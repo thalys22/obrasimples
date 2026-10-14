@@ -120,7 +120,7 @@
   @media (max-width:860px){
     .topbar{flex-wrap:wrap;gap:8px;padding:8px max(16px, env(safe-area-inset-right,0px)) 8px max(16px, env(safe-area-inset-left,0px));}
     .menu-toggle{display:grid;}
-    .obra-chip{display:none;}
+    #obra-wrap{display:none;}
     .top-right{flex:1 1 100%;order:3;margin-left:0;}
     .search{flex:1;width:auto;}
     .menu{position:fixed;top:0;left:0;bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);height:auto;width:min(300px, 86vw);z-index:35;transform:translateX(-105%);transition:transform .18s;box-shadow:8px 0 24px rgba(16,24,40,0.18);padding-top:env(safe-area-inset-top,0px);}
@@ -796,7 +796,7 @@ function renderTopbar(){
       </svg>
       <div><b>ObraSimples</b><small>Controle de obra</small></div>
     </div>
-    <button class="obra-chip" id="obra-chip" title="Dados da obra"><i></i><span id="obra-chip-txt"></span></button>
+    <div class="notif-wrap" id="obra-wrap"><button class="obra-chip" id="obra-chip" title="Trocar de obra"><i></i><span id="obra-chip-txt"></span><span id="obra-chip-n"></span></button><div class="dropdown wide" id="obra-list" hidden style="left:0;right:auto;"></div></div>
     <div class="top-right">
       <div class="search">${ic('search',18)}<input id="busca" type="search" placeholder="Pesquise uma funcionalidade…" autocomplete="off" aria-label="Pesquisar funcionalidade"><div class="dropdown" id="busca-res" hidden></div></div>
       <div class="notif-wrap"><button class="icon-btn" id="btn-notif" aria-label="Avisos">${ic('bell')}<span class="dot" id="notif-dot" hidden></span></button><div class="dropdown wide" id="notif-list" hidden></div></div>
@@ -806,7 +806,24 @@ function renderTopbar(){
   document.getElementById('btn-menu').onclick = abrirMenuMobile;
   document.getElementById('btn-reopen').onclick = recolherMenu;
   document.getElementById('scrim').onclick = fecharMenuMobile;
-  document.getElementById('obra-chip').onclick = ()=>irPara('dados');
+  document.getElementById('obra-chip').onclick = e=>{
+    e.stopPropagation();
+    const lista = document.getElementById('obra-list');
+    if(!lista.hidden){ lista.hidden = true; return; }
+    const obras = (state && state.obras) || [];
+    lista.innerHTML = `<div class="dd-head">${obras.length>1 ? 'Trocar de obra' : 'Sua obra'}</div>`
+      + obras.map(o=>`<button class="dd-item" data-obra-id="${o.id}"><b>${o.id===state.obraId?'✓ ':''}${esc(o.nome)}</b><small>${o.souDono ? 'Você é o dono' : 'Compartilhada por '+esc(o.dono)}</small></button>`).join('')
+      + `<button class="dd-item" data-go="dados"><b>Dados da obra</b><small>Nome, cliente, prazo e planilhas</small></button>`;
+    lista.hidden = false;
+  };
+  document.getElementById('obra-list').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-obra-id]'); if(!b) return;
+    document.getElementById('obra-list').hidden = true;
+    const id = parseInt(b.dataset.obraId); if(id===state.obraId) return;
+    const r = await api('POST', '/api/obra/selecionar', {obraId: id});
+    if(r){ nfDraft = novoNfDraft(); irPara('inicio'); toast('ok', 'Obra trocada', `<div>Agora você está em ${esc(state.obra.nome)}.</div>`); }
+  });
+  document.addEventListener('click', e=>{ if(!e.target.closest('#obra-wrap')) document.getElementById('obra-list').hidden = true; });
 
   const inp = document.getElementById('busca'), res = document.getElementById('busca-res');
   let sel = 0, itens = [];
@@ -872,6 +889,8 @@ function renderTopbar(){
 function updateTopbar(){
   const o = state.obra;
   document.getElementById('obra-chip-txt').textContent = (o.nome||'Minha obra') + (o.prazo ? ' · entrega '+fmtDate(o.prazo) : '');
+  const nObras = (state.obras||[]).length;
+  document.getElementById('obra-chip-n').textContent = nObras>1 ? ' ▾ '+nObras+' obras' : ' ▾';
   const u = state.usuario || {nome:'?'};
   document.getElementById('btn-user').textContent = (u.nome||'?').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   const n = avisos().length, dot = document.getElementById('notif-dot');
@@ -984,18 +1003,24 @@ function renderDados(){
       </div>
       <p class="helptext" style="margin:12px 0 0;">As alterações são salvas assim que você sai do campo.</p>
     </div>
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Quem acessa esta obra</h3>
+      <p class="helptext" style="margin:0;">${state.souDono ? 'Você é o dono desta obra.' : 'Esta obra é de <b>'+esc(state.donoNome)+'</b> e foi compartilhada com você. Você pode fazer lançamentos, mas não apagar tudo nem importar planilha por cima.'}
+      ${(state.obras||[]).length>1 ? ' Você tem acesso a '+state.obras.length+' obras: troque pelo seletor no topo da tela.' : ''}
+      Quem vincula obras a pessoas é o administrador do sistema.</p>
+    </div>
     <div class="card" style="margin-bottom:18px;" id="sec-planilhas">
       <h3>Planilhas (Excel)</h3>
       <p class="helptext">Baixe o modelo para montar o orçamento no Excel e depois importe aqui. Ou exporte a obra inteira para guardar uma cópia. Ao importar, só as abas presentes no arquivo são substituídas. O resto continua como está.</p>
       <div class="btn-row">
         <button class="ghost" onclick="baixarModeloOrcamento()">Baixar modelo de orçamento</button>
         <button class="ghost" onclick="exportarDadosCompletos()">Exportar a obra inteira</button>
-        <label class="ghost" tabindex="0" onkeydown="if(event.key==='Enter')this.click()">Importar planilha
+        ${state.souDono ? `<label class="ghost" tabindex="0" onkeydown="if(event.key==='Enter')this.click()">Importar planilha
           <input type="file" id="f-import-file" accept=".xlsx,.xls" onchange="handleImportarPlanilha(event)">
-        </label>
+        </label>` : ''}
       </div>
     </div>
-    <div class="card">
+    <div class="card" ${state.souDono ? '' : 'hidden'}>
       <h3>Recomeçar</h3>
       <p class="helptext">Apaga os dados desta obra no servidor. Exporte a planilha antes se quiser guardar uma cópia.</p>
       <div class="btn-row">

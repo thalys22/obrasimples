@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 
 from .models import (
@@ -66,13 +66,30 @@ def pegar(modelo, obra, id_, nome):
 
 
 # ---------------------------------------------------------------- obra
-def obter_obra(usuario):
-    obra = usuario.obras.order_by("id").first()
+def obras_do_usuario(usuario):
+    """Obras que o usuário pode abrir: as que ele é dono e as compartilhadas com ele."""
+    return Obra.objects.filter(Q(dono=usuario) | Q(membros=usuario)).distinct().order_by("id")
+
+
+def obter_obra(usuario, obra_id=None):
+    """Obra ativa do usuário. Se ele ainda não tem nenhuma, cria uma com dados de exemplo."""
+    qs = obras_do_usuario(usuario)
+    obra = qs.filter(pk=obra_id).first() if obra_id else None
+    obra = obra or qs.first()
     if obra is None:
         with transaction.atomic():
             obra = Obra.objects.create(dono=usuario)
             carregar_exemplo(obra)
     return obra
+
+
+def pode_apagar_tudo(obra, usuario):
+    return usuario.is_superuser or obra.dono_id == usuario.pk
+
+
+def exigir_dono(obra, usuario):
+    if not pode_apagar_tudo(obra, usuario):
+        raise RegraNegocio("Só o dono da obra pode apagar todos os dados ou importar uma planilha por cima.")
 
 
 def atualizar_obra(obra, dados):
@@ -407,6 +424,11 @@ def estado(obra, usuario):
         "pagamentos": [{"id": p.pk, "tipo": p.tipo, "origem": p.origem, "orcamentoItemId": p.item_id, "valor": f(p.valor), "dataProgramada": iso(p.data_programada),
                         "dataPagamento": iso(p.data_pagamento) or None, "status": p.status, "medicaoId": p.medicao_id} for p in obra.pagamentos.all()],
         "usuario": {"nome": usuario.get_full_name() or usuario.username, "login": usuario.username, "admin": usuario.is_staff},
+        "obraId": obra.pk,
+        "souDono": pode_apagar_tudo(obra, usuario),
+        "donoNome": obra.dono.get_full_name() or obra.dono.username,
+        "obras": [{"id": o.pk, "nome": o.nome, "dono": o.dono.get_full_name() or o.dono.username, "souDono": o.dono_id == usuario.pk}
+                  for o in obras_do_usuario(usuario).select_related("dono")],
         # IDs temporários usados só pela importação de planilha no navegador
         "seq": 10 ** 9,
         "nextIds": {"nf": 1, "pedido": 1, "contrato": 1, "medicao": 1, "pagamento": 1},

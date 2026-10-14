@@ -34,7 +34,8 @@ def api(metodos):
                     raise ValueError
             except ValueError:
                 return JsonResponse({"erro": "Requisição inválida."}, status=400)
-            obra = S.obter_obra(request.user)
+            obra = S.obter_obra(request.user, request.session.get("obra_id"))
+            request.session["obra_id"] = obra.pk
             try:
                 extra = fn(request, obra, corpo, *args, **kwargs) or {}
             except S.RegraNegocio as e:
@@ -135,9 +136,27 @@ def pagamento_excluir(request, obra, d, pk):
 
 @api(["POST"])
 def recomecar(request, obra, d):
+    S.exigir_dono(obra, request.user)
     S.recomecar(obra, "exemplo" if d.get("tipo") == "exemplo" else "vazio")
 
 
 @api(["POST"])
 def importar(request, obra, d):
+    S.exigir_dono(obra, request.user)
     S.substituir(obra, d.get("estado") or {})
+
+
+@require_http_methods(["POST"])
+def selecionar_obra(request):
+    """Troca a obra ativa (só entre as obras que o usuário pode abrir)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"erro": "Sua sessão expirou. Entre de novo."}, status=401)
+    try:
+        obra_id = int(json.loads(request.body or b"{}").get("obraId"))
+    except (ValueError, TypeError, AttributeError):
+        return JsonResponse({"erro": "Obra inválida."}, status=400)
+    obra = S.obras_do_usuario(request.user).filter(pk=obra_id).first()
+    if obra is None:
+        return JsonResponse({"erro": "Você não tem acesso a essa obra."}, status=400)
+    request.session["obra_id"] = obra.pk
+    return JsonResponse({"estado": S.estado(obra, request.user)})

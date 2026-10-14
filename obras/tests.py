@@ -187,3 +187,89 @@ class ApiTests(Base):
         self.assertEqual(e["orcamento"], [])
         self.assertFalse(e["exemplo"])
         self.assertEqual(Pagamento.objects.filter(obra__dono=self.ana).count(), 0)
+
+
+class CompartilhamentoTests(Base):
+    def test_obra_criada_pelo_admin_e_usada_no_primeiro_acesso(self):
+        obra = Obra.objects.create(dono=self.beto, nome="Casa Atalaia")
+        cb = Client(); cb.force_login(self.beto)
+        e = self.estado(cb)
+        self.assertEqual(e["obra"]["nome"], "Casa Atalaia")
+        self.assertEqual(e["obraId"], obra.pk)
+        self.assertEqual(Obra.objects.filter(dono=self.beto).count(), 1)  # não criou obra de exemplo extra
+
+    def test_membro_ve_troca_e_lanca_mas_nao_apaga_tudo(self):
+        e_ana = self.estado()
+        obra_ana = Obra.objects.get(pk=e_ana["obraId"])
+        obra_ana.membros.add(self.beto)
+        cb = Client(); cb.force_login(self.beto)
+        S.obter_obra(self.beto)  # beto ganha a obra dele também
+        obra_beto = Obra.objects.create(dono=self.beto, nome="Obra do Beto")
+        e = self.estado(cb)
+        self.assertEqual(len(e["obras"]), 2)
+        r = self.post("/api/obra/selecionar", {"obraId": obra_ana.pk}, client=cb)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["estado"]["obraId"], obra_ana.pk)
+        self.assertFalse(r.json()["estado"]["souDono"])
+        r = self.post("/api/fornecedores", {"nome": "Fornecedor do Beto na obra da Ana"}, client=cb)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(obra_ana.fornecedores.filter(nome__contains="Beto").exists())
+        r = self.post("/api/recomecar", {"tipo": "vazio"}, client=cb)
+        self.assertEqual(r.status_code, 400)
+        self.assertTrue(obra_ana.orcamento.exists())
+        r = self.post("/api/importar", {"estado": e}, client=cb)
+        self.assertEqual(r.status_code, 400)
+
+    def test_nao_seleciona_obra_sem_acesso(self):
+        e_ana = self.estado()
+        cb = Client(); cb.force_login(self.beto)
+        self.estado(cb)
+        r = self.post("/api/obra/selecionar", {"obraId": e_ana["obraId"]}, client=cb)
+        self.assertEqual(r.status_code, 400)
+
+    def test_removido_da_obra_perde_acesso(self):
+        e_ana = self.estado()
+        obra_ana = Obra.objects.get(pk=e_ana["obraId"])
+        obra_ana.membros.add(self.beto)
+        cb = Client(); cb.force_login(self.beto)
+        self.post("/api/obra/selecionar", {"obraId": obra_ana.pk}, client=cb)
+        obra_ana.membros.remove(self.beto)
+        e = self.estado(cb)
+        self.assertNotEqual(e["obraId"], obra_ana.pk)
+
+
+class AdminPermissoesTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        self.root = User.objects.create_superuser("root", "r@x.com", "senha-forte-789")
+        self.gestor = User.objects.create_user("gestor", password="senha-forte-000", is_staff=True)
+        self.gestor.groups.add(Group.objects.get(name="Gestão de usuários e obras"))
+        self.comum = User.objects.create_user("comum", password="senha-forte-111")
+
+    def test_grupos_prontos_existem(self):
+        from django.contrib.auth.models import Group
+        consulta = Group.objects.get(name="Consulta (somente leitura)")
+        self.assertTrue(consulta.permissions.exists())
+        self.assertFalse(consulta.permissions.exclude(codename__startswith="view_").exists())
+
+    def test_superusuario_ve_telas_com_explicacao(self):
+        c = Client(); c.force_login(self.root)
+        r = c.get(f"/admin/auth/user/{self.comum.pk}/change/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Membro da equipe")
+        self.assertContains(r, "Consulta (somente leitura)")
+        obra = Obra.objects.create(dono=self.comum, nome="X")
+        self.assertEqual(c.get(f"/admin/obras/obra/{obra.pk}/change/").status_code, 200)
+        self.assertEqual(c.get("/admin/obras/obra/add/").status_code, 200)
+
+    def test_gestor_nao_altera_superusuario_nem_se_promove(self):
+        c = Client(); c.force_login(self.gestor)
+        self.assertEqual(c.get(f"/admin/auth/user/{self.comum.pk}/change/").status_code, 200)
+        r = c.get(f"/admin/auth/user/{self.root.pk}/password/")
+        self.assertIn(r.status_code, (403, 302))
+        r = c.post(f"/admin/auth/user/{self.gestor.pk}/change/", {
+            "username": "gestor", "is_active": "on", "is_superuser": "on", "is_staff": "on",
+            "date_joined_0": "2026-10-14", "date_joined_1": "10:00:00",
+        })
+        self.gestor.refresh_from_db()
+        self.assertFalse(self.gestor.is_superuser)
