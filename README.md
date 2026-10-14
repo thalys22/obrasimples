@@ -1,0 +1,137 @@
+# ObraSimples · versão com servidor (Django)
+
+Controle de obra para pequenas construtoras, agora com **login, banco de dados e painel de administração**.
+
+- Cada usuário entra com usuário e senha e tem **a própria obra**. Um usuário não vê a obra de outro.
+- Você (administrador) cria, bloqueia e troca a senha dos usuários, e vê os dados de todas as obras em `/admin`.
+- As regras de negócio (custo médio, baixa de estoque, limite de 100% nas medições, pagamentos automáticos) rodam no servidor. Ninguém consegue burlar pelo navegador.
+- No primeiro acesso, cada usuário recebe uma obra com **dados de exemplo** para aprender. Ele pode zerar e começar a própria obra em *Dados da obra e planilhas*.
+
+---
+
+## 1. Rodar no seu computador (para conhecer)
+
+Precisa do Python 3.10 ou mais novo instalado ([python.org](https://www.python.org/downloads/)).
+
+No Windows, abra o **Prompt de Comando** dentro da pasta `obrasimples_web` e rode:
+
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+set DJANGO_DEBUG=1
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+No Mac/Linux troque as linhas 2 e 4 por `source .venv/bin/activate` e `export DJANGO_DEBUG=1`.
+
+Abra http://127.0.0.1:8000 e entre com o usuário que você criou no `createsuperuser`.
+
+> `DJANGO_DEBUG=1` é só para o seu computador. Nunca use em produção.
+
+---
+
+## 2. Controlar usuários
+
+Entre em **/admin** (ou pelo seu avatar no canto superior direito → *Administração*).
+
+| Para… | Faça |
+|---|---|
+| Criar um testador | *Usuários → Adicionar usuário*. Defina usuário e senha. Depois preencha nome e sobrenome (aparecem no app). |
+| Bloquear o acesso | Abra o usuário e desmarque **Ativo**. Ele não consegue mais entrar e os dados dele ficam guardados. |
+| Trocar a senha de alguém | Abra o usuário → link *"este formulário"* no campo Senha. |
+| Dar acesso ao /admin para outra pessoa | Marque **Membro da equipe** (vê o admin) e, se quiser, **Superusuário** (pode tudo). |
+| Ver a obra de um testador | *Obras* lista todas, com dono e total orçado. Notas, consumos, medições e pagamentos têm filtro **por usuário** na lateral. |
+| Zerar ou recarregar o exemplo de uma obra | Em *Obras*, marque a obra, escolha a ação no menu *Ação* e clique *Ir*. |
+
+O próprio usuário troca a senha dele pelo avatar → *Trocar senha*. Não há cadastro aberto: só entra quem você criar.
+
+---
+
+## 3. Colocar no ar para testadores (PythonAnywhere)
+
+O PythonAnywhere tem plano gratuito que roda Django e guarda o banco SQLite. É suficiente para a fase de testes. Confira no site as regras atuais do plano gratuito (por exemplo, renovações periódicas do site pelo painel).
+
+1. Crie uma conta em https://www.pythonanywhere.com (plano *Beginner*). Seu endereço será `SEUUSUARIO.pythonanywhere.com`.
+2. Aba **Consoles** → *Bash*. Baixe o código do GitHub (o repositório é privado, então o GitHub pede usuário e um *token* no lugar da senha: crie em GitHub → Settings → Developer settings → Personal access tokens, com permissão de leitura do repositório):
+   ```
+   git clone https://github.com/thalys22/obrasimples.git obrasimples_web
+   ```
+3. Ainda no console, rode, trocando `SEUUSUARIO`:
+   ```
+   cd obrasimples_web
+   mkvirtualenv --python=python3.10 obrasimples
+   pip install -r requirements.txt
+   python -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+   **Copie a chave** que aparecer (é a sua `DJANGO_SECRET_KEY`). Depois:
+   ```
+   export DJANGO_SECRET_KEY='cole-a-chave-aqui'
+   export DJANGO_ALLOWED_HOSTS='SEUUSUARIO.pythonanywhere.com'
+   python manage.py migrate
+   python manage.py collectstatic --noinput
+   python manage.py createsuperuser
+   ```
+4. Aba **Web** → *Add a new web app* → *Manual configuration* → *Python 3.10*.
+5. Ainda na aba Web:
+   - **Virtualenv**: `/home/SEUUSUARIO/.virtualenvs/obrasimples`
+   - **Static files**: URL `/static/` → Directory `/home/SEUUSUARIO/obrasimples_web/staticfiles`
+   - **Force HTTPS**: ligado
+6. Clique no link do **WSGI configuration file**, apague tudo e cole:
+   ```python
+   import os, sys
+   path = '/home/SEUUSUARIO/obrasimples_web'
+   if path not in sys.path:
+       sys.path.insert(0, path)
+   os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings'
+   os.environ['DJANGO_SECRET_KEY'] = 'cole-a-mesma-chave-aqui'
+   os.environ['DJANGO_ALLOWED_HOSTS'] = 'SEUUSUARIO.pythonanywhere.com'
+   os.environ['DJANGO_CSRF_TRUSTED'] = 'https://SEUUSUARIO.pythonanywhere.com'
+   from django.core.wsgi import get_wsgi_application
+   application = get_wsgi_application()
+   ```
+7. Volte na aba Web e clique **Reload**. Acesse `https://SEUUSUARIO.pythonanywhere.com`.
+
+**Atualizar depois**: no console, `cd obrasimples_web && git pull`, depois rode `python manage.py migrate` e `python manage.py collectstatic --noinput` no console (com os `export` do passo 3) e clique **Reload**.
+
+**Backup**: o banco é o arquivo `db.sqlite3`. Baixe uma cópia pela aba Files de vez em quando.
+
+### Outros servidores
+
+Funciona em qualquer hospedagem Python (Render, Railway, uma VPS). Comando de início: `gunicorn config.wsgi`. Para usar PostgreSQL, descomente `psycopg` no `requirements.txt` e defina `DATABASE_URL`.
+
+---
+
+## 4. Variáveis de ambiente
+
+| Variável | Para quê |
+|---|---|
+| `DJANGO_SECRET_KEY` | Obrigatória em produção. Chave longa e secreta. |
+| `DJANGO_DEBUG` | `1` só no seu computador. Em produção, deixe sem definir. |
+| `DJANGO_ALLOWED_HOSTS` | Domínio do site, ex.: `seuusuario.pythonanywhere.com` |
+| `DJANGO_CSRF_TRUSTED` | Mesmo domínio com `https://` na frente |
+| `DATABASE_URL` | Opcional. Sem ela usa SQLite. |
+| `DJANGO_SSL_REDIRECT` | `1` se o servidor não forçar HTTPS sozinho |
+
+---
+
+## 5. Estrutura
+
+```
+config/            configurações do Django
+obras/models.py    tabelas: obra, orçamento, materiais, notas, consumos, contratos, medições, pagamentos
+obras/services.py  regras de negócio (tudo que altera dados passa por aqui)
+obras/views.py     API JSON usada pelo app (/api/...)
+obras/admin.py     painel de administração
+obras/tests.py     testes automáticos (python manage.py test obras)
+frontend/app.html  o aplicativo (página única)
+templates/         telas de login e troca de senha
+```
+
+## 6. Limites desta versão
+
+- Uma obra por usuário. Várias obras por conta e equipe trabalhando na mesma obra ficam para a próxima fase.
+- Não há "esqueci minha senha" por e-mail: o administrador redefine.
+- Não há histórico de quem alterou o quê, além de quem aprovou cada medição.

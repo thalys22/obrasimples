@@ -1,0 +1,18 @@
+{% extends "base_conta.html" %}
+{% block titulo %}Entrar · ObraSimples{% endblock %}
+{% block conteudo %}
+<h1>Entrar</h1>
+<p class="sub">Use o usuário e a senha que você recebeu.</p>
+{% if form.errors %}<div class="erro">Usuário ou senha incorretos. Confira e tente de novo.</div>{% endif %}
+{% if user.is_authenticated and next %}<div class="erro">Sua conta não tem acesso a essa página.</div>{% endif %}
+<form method="post" action="{% url 'login' %}">
+  {% csrf_token %}
+  <label for="id_username">Usuário</label>
+  <input id="id_username" name="username" autocomplete="username" autocapitalize="none" required autofocus value="{{ form.username.value|default:'' }}">
+  <label for="id_password">Senha</label>
+  <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit">Entrar</button>
+</form>
+<p class="ajuda">Esqueceu a senha ou ainda não tem acesso? Fale com o administrador do ObraSimples.</p>
+{% endblock %}

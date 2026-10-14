@@ -1,0 +1,1860 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>ObraSimples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  /* Layout: plataforma — trilho de ícones escuro à esquerda, cabeçalho branco com busca e notificações, menu do módulo em árvore, conteúdo em cartões sobre cinza claro. Tema claro único, por escolha. */
+  :root{
+    color-scheme: light;
+    --ink:#1C2533;
+    --ink-2:#3A4555;
+    --paper:#F3F4F6;
+    --paper-2:#EBEDF0;
+    --white:#FFFFFF;
+    --rail:#1C2533;
+    --rail-ink:#A9B4C2;
+    --accent:#E07B24;
+    --accent-soft:#FCEFE3;
+    --blueprint:#2B5C8A;
+    --blueprint-deep:#1D4166;
+    --blueprint-soft:#E6EEF6;
+    --concrete:#687384;
+    --amber:#E2A33A;
+    --amber-soft:#FBEED5;
+    --amber-ink:#6B4A0C;
+    --red:#C2443A;
+    --red-soft:#F8E0DD;
+    --red-ink:#7A2A24;
+    --green:#2F7D52;
+    --green-soft:#DFF0E6;
+    --line:#E3E6EA;
+    --line-strong:#C9CED6;
+    --tile-teal:#76C5C9;
+    --tile-coral:#EE8576;
+    --tile-amber:#F3B34C;
+    --tile-blue:#8FB9E6;
+    --tb-muted:#A9B4C2;
+    --menu-bg:#1F4A35;
+    --menu-ink:#D5E6DC;
+    --menu-muted:#9EC2AD;
+    --menu-line:rgba(255,255,255,0.14);
+    --menu-hover:rgba(255,255,255,0.07);
+    --menu-active:rgba(255,255,255,0.13);
+    --font-display:'Inter', system-ui, sans-serif;
+    --font-body:'Inter', system-ui, sans-serif;
+    --font-mono:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--font-body);background:var(--paper);color:var(--ink);font-size:14px;}
+  ::selection{background:var(--blueprint);color:var(--white);}
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, label:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+
+  /* ---------- Cabeçalho ---------- */
+  .frame{min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;min-height:60px;background:var(--white);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:8px 20px;}
+  .brand{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+  .brand b{font-size:19px;font-weight:800;letter-spacing:-0.3px;color:var(--ink);line-height:1;}
+  .brand small{display:block;font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--concrete);margin-top:2px;}
+  .obra-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;background:var(--paper);font:inherit;font-size:12.5px;color:var(--ink-2);cursor:pointer;min-width:0;max-width:340px;}
+  .obra-chip:hover{border-color:var(--line-strong);}
+  .obra-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .obra-chip i{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
+  .search{position:relative;width:min(340px, 34vw);}
+  .search input{width:100%;height:38px;border:1px solid var(--line-strong);border-radius:999px;padding:0 14px 0 38px;font:inherit;font-size:13.5px;color:var(--ink);background:var(--white);}
+  .search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--concrete);pointer-events:none;}
+  .dropdown{position:absolute;top:calc(100% + 6px);right:0;left:0;background:var(--white);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 32px rgba(16,24,40,0.14);z-index:45;max-height:min(420px, 70vh);overflow:auto;padding:6px 0;}
+  .dropdown.wide{left:auto;width:min(380px, calc(100vw - 32px));}
+  .dd-item{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 14px;font:inherit;cursor:pointer;color:var(--ink);}
+  .dd-item:hover, .dd-item.sel{background:var(--paper);}
+  .dd-item b{display:block;font-size:13.5px;font-weight:600;}
+  .dd-item small{display:block;font-size:11.5px;color:var(--concrete);margin-top:1px;}
+  .dd-empty{padding:12px 14px;font-size:12.5px;color:var(--concrete);}
+  .dd-head{padding:8px 14px 6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--concrete);}
+  .icon-btn{width:38px;height:38px;border-radius:50%;border:none;background:none;color:var(--ink-2);display:grid;place-items:center;cursor:pointer;position:relative;flex-shrink:0;}
+  .icon-btn:hover{background:var(--paper);}
+  .icon-btn .dot{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:var(--white);font-size:10px;font-weight:700;display:grid;place-items:center;}
+  .menu-toggle{display:none;}
+  .icon-btn.avatar{background:var(--menu-bg);color:var(--white);font-weight:700;font-size:13px;margin-left:4px;}
+  .icon-btn.avatar:hover{background:#163826;}
+  a.dd-item{text-decoration:none;}
+  body.busy{cursor:progress;}
+  body.busy button.primary, body.busy .danger-btn{opacity:.6;pointer-events:none;}
+  .notif-wrap{position:relative;}
+
+  /* ---------- Menu do módulo ---------- */
+  .body{display:flex;flex:1;min-height:0;}
+  .menu{width:270px;flex-shrink:0;background:var(--menu-bg);color:var(--menu-ink);border-right:1px solid var(--menu-bg);position:sticky;top:60px;align-self:flex-start;height:calc(100vh - 60px - 30px);overflow:auto;padding:4px 0 20px;}
+  .menu-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;font-weight:700;font-size:16px;color:var(--white);border-bottom:1px solid var(--menu-line);margin-bottom:6px;}
+  .menu-head button{border:none;background:none;color:var(--menu-muted);cursor:pointer;padding:4px;border-radius:4px;}
+  .menu-head button:hover{background:var(--menu-hover);color:var(--white);}
+  details.mgroup > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 16px;font-weight:700;font-size:13.5px;color:var(--white);}
+  details.mgroup > summary:hover{background:var(--menu-hover);}
+  details.mgroup > summary::-webkit-details-marker{display:none;}
+  details.mgroup > summary::before{content:'';width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--menu-muted);transform:rotate(-90deg);transition:transform .12s;}
+  details.mgroup[open] > summary::before{transform:none;}
+  .mitem{display:flex;align-items:center;width:calc(100% - 32px);margin-left:32px;text-align:left;border:none;border-left:1px solid var(--menu-line);background:none;padding:8px 12px;font:inherit;font-size:13.5px;color:var(--menu-ink);cursor:pointer;}
+  .mitem:hover{background:var(--menu-hover);color:var(--white);}
+  .mitem.active{color:var(--white);font-weight:600;border-left:2px solid var(--accent);background:var(--menu-active);}
+  .mitem .badge{margin-left:auto;background:var(--red);color:var(--white);font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;}
+  .frame.menu-collapsed .menu{display:none;}
+  .menu-reopen{display:none;}
+  .frame.menu-collapsed .menu-reopen{display:inline-grid;}
+
+  main{flex:1;min-width:0;padding:24px 28px 48px;background:var(--paper);}
+  .crumb{font-size:12px;color:var(--concrete);margin-bottom:6px;}
+  .crumb b{color:var(--ink-2);font-weight:600;}
+  .section-title{font-family:var(--font-display);font-weight:700;font-size:24px;margin:0 0 4px;color:var(--ink);letter-spacing:-0.2px;text-wrap:balance;}
+  .section-sub{font-size:13px;color:var(--concrete);margin:0 0 18px;}
+  .statusbar{position:sticky;bottom:0;height:30px;display:flex;align-items:center;justify-content:flex-end;gap:14px;border-top:1px solid var(--line);background:var(--white);font-size:11.5px;color:var(--concrete);padding:0 20px;z-index:10;white-space:nowrap;overflow:hidden;}
+  .scrim{position:fixed;inset:0;background:rgba(28,37,51,0.4);z-index:34;}
+
+  @media (max-width:860px){
+    .topbar{flex-wrap:wrap;gap:8px;padding:8px max(16px, env(safe-area-inset-right,0px)) 8px max(16px, env(safe-area-inset-left,0px));}
+    .menu-toggle{display:grid;}
+    .obra-chip{display:none;}
+    .top-right{flex:1 1 100%;order:3;margin-left:0;}
+    .search{flex:1;width:auto;}
+    .menu{position:fixed;top:0;left:0;bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);height:auto;width:min(300px, 86vw);z-index:35;transform:translateX(-105%);transition:transform .18s;box-shadow:8px 0 24px rgba(16,24,40,0.18);padding-top:env(safe-area-inset-top,0px);}
+    .frame.menu-open .menu{transform:none;}
+    .frame.menu-collapsed .menu{display:block;}
+    .menu-reopen, .frame.menu-collapsed .menu-reopen{display:none;}
+    main{padding:18px 16px 32px;}
+    .statusbar{display:none;}
+    .dropdown.wide{position:fixed;top:112px;left:16px;right:16px;width:auto;}
+  }
+  @media (prefers-reduced-motion: reduce){.menu{transition:none;}}
+
+  /* ---------- Mural (início) ---------- */
+  .home-hello{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-0.2px;}
+  .home-top{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;margin-bottom:22px;}
+  .home-row{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:18px;margin-bottom:18px;}
+  @media(max-width:1180px){.home-top{grid-template-columns:1fr;}}
+  @media(max-width:900px){.home-row{grid-template-columns:1fr;}}
+  .mural-title{font-size:19px;font-weight:700;margin:4px 0 12px;}
+  .panel{background:var(--white);border:1px solid var(--line);border-radius:8px;min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+  .panel-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);}
+  .panel-head h3{margin:0;font-size:16px;font-weight:700;}
+  .panel-head .more{margin-left:auto;}
+  .tile{width:38px;height:38px;border-radius:6px;display:grid;place-items:center;color:var(--white);flex-shrink:0;}
+  .tile.teal{background:var(--tile-teal);} .tile.coral{background:var(--tile-coral);} .tile.amber{background:var(--tile-amber);} .tile.blue{background:var(--tile-blue);} .tile.green{background:#7CC59A;}
+  .plist{max-height:300px;overflow:auto;}
+  .prow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:none;border-bottom:1px solid var(--line);background:none;padding:11px 16px;font:inherit;color:var(--ink);cursor:pointer;}
+  .prow:last-child{border-bottom:none;}
+  .prow:hover{background:var(--paper);}
+  .prow .pt{flex:1;min-width:0;}
+  .prow b{display:block;font-size:13.5px;font-weight:600;}
+  .prow small{display:block;font-size:12px;color:var(--concrete);margin-top:2px;}
+  .prow .star{color:var(--line-strong);flex-shrink:0;}
+  .prow .val{font-size:13px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .datebox{width:46px;flex-shrink:0;text-align:center;line-height:1.1;}
+  .datebox b{font-size:18px;font-weight:700;}
+  .datebox small{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin:0;}
+  .datebox.late b, .datebox.late small{color:var(--red);}
+  .psep{background:var(--paper);text-align:center;font-size:12px;font-weight:600;color:var(--ink-2);padding:7px;border-bottom:1px solid var(--line);}
+  .pempty{padding:20px 16px;font-size:13px;color:var(--concrete);}
+  .quick{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px;padding:14px 16px;}
+  .quick button{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--white);padding:12px;font:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;}
+  .quick button:hover{border-color:var(--accent);background:var(--accent-soft);}
+  .quick button svg{color:var(--accent);flex-shrink:0;}
+  @media(max-width:420px){.quick{grid-template-columns:1fr;}}
+  .hero .cta{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;}
+  .hero .cta button{background:var(--accent);color:var(--white);border:none;border-radius:999px;padding:9px 18px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;}
+  .hero .cta button.alt{background:transparent;border:1px solid #4A5A70;color:var(--white);}
+
+  /* ---------- Cards ---------- */
+  .grid{display:grid;gap:18px;}
+  .grid > *{min-width:0;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-2{grid-template-columns:2fr 1fr;}
+  @media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:1fr;}.grid-2{grid-template-columns:1fr;}}
+  @media(max-width:420px){.grid-4{grid-template-columns:1fr;}}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:18px 20px;min-width:0;}
+  @media(max-width:760px){.card{padding:14px;}}
+  .card h3{margin:0 0 14px;font-family:var(--font-display);font-weight:700;font-size:15.5px;color:var(--ink);}
+  .metric-card{padding:16px 18px;}
+  .metric-label{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--concrete);margin-bottom:8px;}
+  .metric-value{font-family:var(--font-display);font-weight:700;font-size:28px;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;}
+  .metric-value.small{font-size:22px;}
+  .metric-foot{font-family:var(--font-mono);font-size:11px;color:var(--concrete);margin-top:6px;}
+  .metric-value.danger{color:var(--red);}
+  .metric-value.warn{color:var(--amber);}
+  .metric-value.ok{color:var(--green);}
+
+  /* ---------- Régua de avanço ---------- */
+  .ruler-wrap{margin:6px 0 2px;}
+  .ruler-labels{display:flex;justify-content:space-between;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--concrete);margin-bottom:4px;}
+  .ruler-labels b{color:var(--ink);font-weight:600;}
+  .ruler-bar{position:relative;height:22px;background:var(--paper);border:1px solid var(--line-strong);border-radius:2px;overflow:hidden;}
+  .ruler-bar::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(90deg, var(--line-strong) 0, var(--line-strong) 1px, transparent 1px, transparent 10%);z-index:2;pointer-events:none;}
+  .ruler-bar::after{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(90deg, var(--ink) 0, var(--ink) 1.5px, transparent 1.5px, transparent 50%);opacity:0.35;z-index:2;pointer-events:none;}
+  .ruler-fill{position:absolute;top:0;left:0;bottom:0;background:var(--blueprint);transition:width .5s ease;z-index:1;}
+  .ruler-fill.warn{background:var(--amber);}
+  .ruler-fill.danger{background:var(--red);}
+  .ruler-fill.ok{background:var(--green);}
+  .ruler-pct{position:absolute;top:0;right:6px;height:100%;display:flex;align-items:center;font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--ink);z-index:3;text-shadow:0 0 4px var(--white), 0 0 4px var(--white);}
+  @media (prefers-reduced-motion: reduce){.ruler-fill{transition:none;}}
+
+  .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--concrete);padding:8px 10px;border-bottom:2px solid var(--line-strong);white-space:nowrap;}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .mono{font-family:var(--font-mono);}
+  tr.origem-row td{background:var(--paper);padding:6px 10px 12px;}
+  .origem-list{display:grid;gap:4px;font-size:12px;}
+  .origem-list div{display:flex;gap:10px;flex-wrap:wrap;}
+  .origem-list .mono{color:var(--concrete);}
+  .origem-list b{margin-left:auto;font-family:var(--font-mono);font-weight:600;}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;}
+  .pill.ok{background:var(--green-soft);color:var(--green);}
+  .pill.warn{background:var(--amber-soft);color:#8A5E10;}
+  .pill.danger{background:var(--red-soft);color:var(--red);}
+  .pill.neutral{background:var(--paper-2);color:var(--concrete);}
+
+  /* ---------- Formulários ---------- */
+  details.formbox{margin-top:16px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--paper);scroll-margin-top:80px;}
+  details.formbox > summary{cursor:pointer;padding:11px 14px;font-size:13px;color:var(--accent);font-weight:600;list-style:none;}
+  details.formbox > summary::-webkit-details-marker{display:none;}
+  details.formbox > summary::before{content:'+ ';}
+  details.formbox[open] > summary::before{content:'– ';}
+  .formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:4px 14px 16px;}
+  .formgrid label{display:block;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--concrete);margin-bottom:4px;}
+  .formgrid input, .formgrid select{width:100%;padding:8px 9px;border:1px solid var(--line-strong);border-radius:3px;font-family:var(--font-body);font-size:14px;background:var(--white);color:var(--ink);}
+  .formgrid input:focus, .formgrid select:focus{outline:none;border-color:var(--blueprint);}
+  .formhint{padding:0 14px 10px;font-size:12.5px;color:var(--concrete);line-height:1.5;}
+  .form-actions{padding:0 14px 16px;display:flex;gap:10px;flex-wrap:wrap;}
+  button.primary{background:var(--accent);color:var(--white);border:none;border-radius:3px;padding:10px 18px;font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer;}
+  button.primary:hover{background:#C66A1C;}
+  button.danger-btn{background:var(--red);color:var(--white);border:none;border-radius:3px;padding:10px 18px;font-family:var(--font-body);font-weight:600;font-size:13px;cursor:pointer;}
+  button.ghost, label.ghost{display:inline-block;background:transparent;border:1px solid var(--line-strong);color:var(--ink);padding:6px 12px;border-radius:3px;font-family:var(--font-mono);font-size:11px;cursor:pointer;white-space:nowrap;}
+  button.ghost:hover, label.ghost:hover{border-color:var(--blueprint);color:var(--blueprint);}
+  button.link{background:none;border:none;padding:0;color:var(--blueprint);font-family:var(--font-mono);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+  button.link.del{color:var(--red);}
+
+  .divider{height:1px;background:var(--line);margin:22px 0;position:relative;}
+  .divider::after{content:'';position:absolute;left:0;right:0;top:-2px;height:5px;background-image:repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 24px);}
+
+  .alert-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:3px;font-size:12.5px;margin-bottom:8px;}
+  .alert-row.danger{background:var(--red-soft);color:var(--red-ink);border-left:3px solid var(--red);}
+  .alert-row.warn{background:var(--amber-soft);color:var(--amber-ink);border-left:3px solid var(--amber);}
+  .alert-row.info{background:var(--blueprint-soft);color:var(--blueprint-deep);border-left:3px solid var(--blueprint);}
+  .alert-row .mono{margin-left:auto;font-weight:600;white-space:nowrap;}
+  .alert-row button{margin-left:auto;}
+
+  .empty{font-family:var(--font-mono);font-size:12px;color:var(--concrete);padding:18px;text-align:center;border:1px dashed var(--line-strong);border-radius:4px;background:var(--paper);line-height:1.5;}
+  .helptext{font-size:12.5px;color:var(--concrete);margin:-6px 0 14px;line-height:1.5;}
+  .link-tag{font-family:var(--font-mono);font-size:11px;color:var(--blueprint);background:var(--blueprint-soft);padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .card-flex-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .card-flex-head h3{margin:0;}
+
+  /* ---------- Termos explicáveis ---------- */
+  button.term{background:none;border:none;padding:0;font:inherit;color:inherit;cursor:help;text-decoration:underline dotted var(--blueprint);text-underline-offset:3px;text-transform:inherit;letter-spacing:inherit;}
+  button.term:hover{color:var(--blueprint);}
+
+  /* ---------- Caixa "para que serve" ---------- */
+  details.intro{background:var(--blueprint-soft);border:1px solid #C9D6E2;border-radius:8px;margin-bottom:20px;}
+  details.intro > summary{cursor:pointer;list-style:none;padding:12px 16px;font-weight:600;font-size:13.5px;color:var(--blueprint-deep);display:flex;align-items:center;gap:10px;}
+  details.intro > summary::-webkit-details-marker{display:none;}
+  details.intro > summary::before{content:'i';display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--blueprint);color:var(--white);font-family:var(--font-mono);font-size:11px;font-weight:700;flex-shrink:0;}
+  details.intro > summary::after{content:'mostrar';margin-left:auto;font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--blueprint);}
+  details.intro[open] > summary::after{content:'esconder';}
+  .intro-body{padding:0 16px 14px 46px;font-size:13.5px;line-height:1.6;color:var(--ink-2);max-width:78ch;}
+  .intro-body p{margin:0 0 8px;}
+  .intro-body ul{margin:0 0 8px;padding-left:18px;}
+  .intro-body .auto{font-family:var(--font-mono);font-size:12px;color:var(--blueprint-deep);background:var(--white);border:1px solid #C9D6E2;border-radius:3px;padding:8px 10px;margin-top:6px;}
+  @media(max-width:760px){.intro-body{padding-left:16px;}}
+
+  /* ---------- Guia ---------- */
+  .guide-lead{font-size:16px;line-height:1.6;max-width:68ch;margin:0 0 22px;color:var(--ink-2);}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:6px 0 4px;}
+  .flow-step{flex:1 1 170px;min-width:0;background:var(--white);border:1px solid var(--line);border-radius:4px;padding:12px 14px;text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:4px;}
+  .flow-step:hover{border-color:var(--blueprint);}
+  .flow-step .n{font-family:var(--font-mono);font-size:10.5px;color:var(--blueprint);letter-spacing:0.8px;text-transform:uppercase;}
+  .flow-step b{font-family:var(--font-display);font-size:16px;font-weight:700;}
+  .flow-step span{font-size:12.5px;color:var(--concrete);line-height:1.45;}
+  .flow-arrow{display:grid;place-items:center;width:28px;flex-shrink:0;color:var(--line-strong);font-family:var(--font-mono);font-size:18px;}
+  @media(max-width:760px){.flow{flex-direction:column;}.flow-arrow{width:auto;height:22px;transform:rotate(90deg);}}
+  .callout{border-left:3px solid var(--amber);background:var(--white);padding:14px 16px;border-radius:0 4px 4px 0;font-size:13.5px;line-height:1.6;max-width:78ch;}
+  .callout b{display:block;margin-bottom:4px;}
+  ol.tour{margin:0;padding:0;list-style:none;counter-reset:tour;display:grid;gap:10px;}
+  ol.tour li{counter-increment:tour;display:flex;gap:12px;align-items:flex-start;background:var(--white);border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-size:13.5px;line-height:1.5;}
+  ol.tour li::before{content:counter(tour);font-family:var(--font-display);font-weight:800;font-size:20px;color:var(--blueprint);line-height:1;min-width:18px;}
+  ol.tour li > div{flex:1;min-width:0;}
+  ol.tour li button{margin-top:6px;}
+  dl.glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin:0;}
+  dl.glossary div{background:var(--white);border:1px solid var(--line);border-radius:4px;padding:10px 12px;}
+  dl.glossary dt{font-weight:700;font-size:13.5px;margin-bottom:3px;}
+  dl.glossary dd{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.5;}
+
+  /* ---------- Destaque: avanço geral ---------- */
+  .hero{background:var(--ink);color:var(--white);border-radius:8px;padding:22px 26px;margin-bottom:18px;border:1px solid var(--blueprint-deep);}
+  @media(max-width:760px){.hero{padding:16px;}}
+  .hero-top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .hero-top h3{margin:0;font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--white);}
+  .hero-top .mono{color:var(--tb-muted);font-size:12px;}
+  .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:800px){.hero-grid{grid-template-columns:1fr;}}
+  .hero-note{font-size:12px;color:#B7C4CC;margin-top:6px;line-height:1.45;}
+  .hero .ruler-labels{color:#B7C4CC;}
+  .hero .ruler-labels b{color:var(--white);}
+  .hero .ruler-bar{border-color:#3C5468;background:#1F3140;}
+  .hero .ruler-bar::before{background-image:repeating-linear-gradient(90deg, #3C5468 0, #3C5468 1px, transparent 1px, transparent 10%);}
+  .hero .ruler-bar::after{background-image:repeating-linear-gradient(90deg, #6E8598 0, #6E8598 1.5px, transparent 1.5px, transparent 50%);}
+  .hero .ruler-pct{color:var(--white);text-shadow:none;}
+  .hero-figure{font-family:var(--font-display);font-weight:700;font-size:38px;letter-spacing:-0.5px;line-height:1;font-variant-numeric:tabular-nums;}
+
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  input[type=file]{display:none;}
+  .nf-draft-table{width:100%;font-size:12.5px;margin:10px 0;}
+  .nf-draft-table th, .nf-draft-table td{padding:5px 8px;}
+
+  /* ---------- Aviso (toast) e confirmação ---------- */
+  #toasts{position:fixed;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));display:grid;gap:8px;z-index:50;width:min(380px, calc(100vw - 32px));}
+  .toast{background:var(--ink);color:var(--white);border-radius:4px;padding:12px 14px 12px 16px;font-size:13px;line-height:1.5;box-shadow:0 6px 24px rgba(22,35,46,0.25);border-left:4px solid var(--blueprint);display:flex;gap:10px;align-items:flex-start;}
+  .toast.ok{border-left-color:#6FB58A;}
+  .toast.err{border-left-color:#E07A70;}
+  .toast.info{border-left-color:var(--amber);}
+  .toast .t-body{flex:1;min-width:0;}
+  .toast .t-body b{display:block;margin-bottom:2px;}
+  .toast ul{margin:4px 0 0;padding-left:16px;}
+  .toast button{background:none;border:none;color:var(--tb-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;}
+  #modal{position:fixed;inset:0;background:rgba(22,35,46,0.55);display:grid;place-items:center;z-index:60;padding:16px;}
+  #modal[hidden]{display:none;}
+  [id^="sec-"], [id^="form-"], #glossario{scroll-margin-top:80px;}
+  .flash{animation:flash 1.4s ease;}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(224,123,36,0.55);}100%{box-shadow:0 0 0 12px rgba(224,123,36,0);}}
+  @media (prefers-reduced-motion: reduce){.flash{animation:none;}}
+  #modal .box{background:var(--white);border-radius:6px;max-width:440px;width:100%;padding:20px 22px;box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+  #modal h4{margin:0 0 8px;font-family:var(--font-display);font-size:18px;font-weight:700;}
+  #modal p{margin:0 0 16px;font-size:13.5px;line-height:1.55;color:var(--ink-2);}
+  #modal .actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div class="frame" id="frame">
+  <header class="topbar" id="topbar"></header>
+  <div class="body">
+    <aside class="menu" id="menu" aria-label="Menu do módulo"></aside>
+    <main id="main"></main>
+  </div>
+  <footer class="statusbar" id="statusbar"></footer>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+
+<div id="toasts" aria-live="polite"></div>
+<div id="modal" hidden><div class="box" role="dialog" aria-modal="true"><h4 id="modal-title"></h4><p id="modal-msg"></p><div class="actions"><button class="ghost" id="modal-no">Cancelar</button><button class="primary" id="modal-yes">Confirmar</button></div></div></div>
+
+<script>
+/* =====================================================================
+   OBRASIMPLES — protótipo funcional (obra única, dados salvos no navegador)
+   ===================================================================== */
+
+/* ---------------------- Utilitários ---------------------- */
+const fmtMoney = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtPct = v => (isFinite(v)?v:0).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+const fmtNum = v => (v||0).toLocaleString('pt-BR',{maximumFractionDigits:2});
+const fmtDate = d => { if(!d) return '—'; const dt = new Date(d+'T00:00:00'); return isNaN(dt) ? String(d) : dt.toLocaleDateString('pt-BR'); };
+/* Data local (não UTC): evita virar o dia às 21h no horário de Brasília */
+const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+const tbl = html => `<div class="tbl">${html}</div>`;
+
+/* ---------------------- Glossário ---------------------- */
+const GLOSSARIO = {
+  orcamento:['Orçamento','Quanto você planejou gastar na obra, serviço por serviço. É a régua contra a qual todo gasto é comparado.'],
+  etapa:['Etapa','Uma grande fase da obra: Fundação, Estrutura, Instalações, Acabamento.'],
+  servico:['Serviço','Um trabalho dentro da etapa. Ex.: "Alvenaria estrutural" dentro de Estrutura. Cada gasto da obra é ligado a um serviço.'],
+  insumo:['Insumo','O que o serviço consome para ser feito: material, mão de obra ou equipamento.'],
+  planejado:['Planejado (orçado)','Quantidade × preço unitário. É o valor que você espera gastar naquele serviço.'],
+  realizado:['Realizado','Quanto já foi gasto de verdade naquele serviço: material retirado do estoque + medições aprovadas de empreiteiros + pagamentos avulsos ligados a ele.'],
+  fisico:['Avanço físico','Quanto da obra já está pronto, em %. Quem acompanha a obra (engenheiro ou mestre) informa por etapa.'],
+  financeiro:['Avanço financeiro','Quanto do orçamento já foi gasto, em %. Se ele corre muito à frente do avanço físico, a obra está gastando mais do que deveria para o que entregou.'],
+  nf:['Nota fiscal de entrada','O registro de uma compra que chegou na obra. Ao lançar, o material entra no estoque e o sistema cria a conta a pagar ao fornecedor.'],
+  estoque:['Estoque (saldo)','O material que está guardado na obra e ainda não foi usado. Material em estoque ainda não conta como gasto de nenhum serviço.'],
+  customedio:['Custo médio','O preço médio que você pagou por um material, considerando todas as compras. Ex.: 100 sacos a R$ 30 + 100 a R$ 34 = custo médio de R$ 32.'],
+  consumo:['Consumo','Retirada de material do estoque para um serviço. É nesse momento que o material vira gasto (realizado) daquele serviço.'],
+  empreiteiro:['Empreiteiro','A equipe terceirizada que executa um serviço (pedreiro, eletricista, pintor...).'],
+  contrato:['Contrato','O acordo de valor com um empreiteiro para um serviço do orçamento.'],
+  medicao:['Medição','A conferência de quanto o empreiteiro executou num período, em % do contrato. É a base para pagar: mediu 40%, paga 40% do valor.'],
+  aprovar:['Aprovar medição','Confirmar que o que o empreiteiro diz ter feito foi mesmo feito. Só depois de aprovada a medição vira gasto e gera pagamento.'],
+  programado:['Programado','Pagamento previsto, que ainda não saiu do caixa.'],
+  pago:['Pago','Pagamento que já foi feito. Você marca manualmente quando o dinheiro sai.'],
+  vencido:['Vencido','Pagamento programado cuja data já passou e ainda não foi marcado como pago.'],
+};
+function t(key, label){ return `<button type="button" class="term" data-term="${key}">${esc(label || GLOSSARIO[key][0])}</button>`; }
+
+/* ---------------------- Estado ---------------------- */
+const STORAGE_KEY = 'obrasimples-v2';
+let state;
+
+function estadoVazio(){
+  return {
+    obra:{nome:'Minha obra', cliente:'', prazo:'', valorContratado:0},
+    orcamento:[], etapaAvanco:{}, fornecedores:[], materiais:[], notasFiscais:[], pedidos:[],
+    empreiteiros:[], contratos:[], medicoes:[], pagamentos:[],
+    seq: 1000,
+    nextIds:{nf:1, pedido:1, contrato:1, medicao:1, pagamento:1},
+  };
+}
+function uid(){ return ++state.seq; }
+
+function estadoExemplo(){
+  state = estadoVazio();
+  state.obra = {nome:'Residencial Bela Vista', cliente:'Construtora Horizonte Ltda.', prazo:'2027-03-15', valorContratado:315000};
+  state.orcamento = [
+    {id:1, etapa:'Fundação', servico:'Escavação e sapatas', insumo:'Cimento, escavação e mão de obra', unidade:'m³', qtd:120, precoUnit:180},
+    {id:2, etapa:'Fundação', servico:'Concreto estrutural', insumo:'Concreto usinado FCK 25 + aço', unidade:'m³', qtd:60, precoUnit:620},
+    {id:3, etapa:'Estrutura', servico:'Alvenaria estrutural', insumo:'Bloco estrutural 14x19x39', unidade:'m²', qtd:480, precoUnit:145},
+    {id:4, etapa:'Estrutura', servico:'Laje pré-moldada', insumo:'Vigota e lajota pré-moldada', unidade:'m²', qtd:210, precoUnit:210},
+    {id:5, etapa:'Instalações', servico:'Instalação elétrica', insumo:'Cabos e conduítes elétricos', unidade:'ponto', qtd:150, precoUnit:95},
+    {id:6, etapa:'Instalações', servico:'Instalação hidráulica', insumo:'Tubos e conexões PVC', unidade:'ponto', qtd:90, precoUnit:110},
+    {id:7, etapa:'Acabamento', servico:'Revestimento cerâmico', insumo:'Porcelanato 60x60', unidade:'m²', qtd:340, precoUnit:78},
+    {id:8, etapa:'Acabamento', servico:'Pintura interna/externa', insumo:'Tinta acrílica', unidade:'m²', qtd:520, precoUnit:34},
+  ];
+  state.etapaAvanco = {'Fundação':100,'Estrutura':65,'Instalações':30,'Acabamento':5};
+  state.fornecedores = [
+    {id:1, nome:'Cimento Forte Materiais', contato:'(79) 3211-4400'},
+    {id:2, nome:'Ferragens União', contato:'(79) 3211-8899'},
+    {id:3, nome:'Cerâmica Costa do Sol', contato:'(79) 3025-1122'},
+  ];
+  state.materiais = [
+    {id:1, nome:'Cimento CP-II (saco 50kg)', unidade:'sc', saldo:0, custoMedio:0},
+    {id:2, nome:'Aço CA-50 10mm', unidade:'kg', saldo:0, custoMedio:0},
+    {id:3, nome:'Bloco estrutural 14x19x39', unidade:'un', saldo:0, custoMedio:0},
+    {id:4, nome:'Porcelanato 60x60', unidade:'m²', saldo:0, custoMedio:0},
+  ];
+  state.empreiteiros = [
+    {id:1, nome:'Equipe Silva Estrutura', contato:'(79) 99911-2233', especialidade:'Estrutura/Alvenaria'},
+    {id:2, nome:'Elétrica Santos', contato:'(79) 99822-1010', especialidade:'Instalações elétricas'},
+  ];
+  lancarNF({fornecedorId:1, numero:'NF-4521', data:'2026-06-02', itens:[{materialId:1, qtd:400, valorUnit:32.5},{materialId:2, qtd:2000, valorUnit:7.2}]});
+  lancarNF({fornecedorId:2, numero:'NF-1187', data:'2026-06-10', itens:[{materialId:3, qtd:6000, valorUnit:3.9}]});
+  registrarConsumo({orcamentoItemId:1, materialId:1, qtd:180, data:'2026-06-05'});
+  registrarConsumo({orcamentoItemId:2, materialId:2, qtd:1400, data:'2026-06-12'});
+  registrarConsumo({orcamentoItemId:3, materialId:3, qtd:4200, data:'2026-06-20'});
+  const c1 = criarContrato({empreiteiroId:1, orcamentoItemId:3, valorContratado:65000, formaPagamento:'Por medição mensal'});
+  const c2 = criarContrato({empreiteiroId:2, orcamentoItemId:5, valorContratado:12500, formaPagamento:'Por medição mensal'});
+  const m1 = registrarMedicao({contratoId:c1.id, data:'2026-06-25', percentual:40});
+  aprovarMedicao(m1.id);
+  registrarMedicao({contratoId:c2.id, data:'2026-07-05', percentual:20});
+  state.pagamentos[0].status='pago'; state.pagamentos[0].dataPagamento='2026-07-02';
+  state.exemplo = true;
+}
+
+function salvar(){ /* os dados ficam no servidor */ }
+function carregar(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ const s = JSON.parse(raw); if(s && Array.isArray(s.orcamento)){ state = Object.assign(estadoVazio(), s); return true; } }
+  }catch(e){}
+  return false;
+}
+const prefsKey = () => STORAGE_KEY + '-prefs-' + (state && state.usuario ? state.usuario.login : 'anon');
+function prefs(){ try{ return JSON.parse(localStorage.getItem(prefsKey())||'{}'); }catch(e){ return {}; } }
+function setPref(k,v){ try{ const p = prefs(); p[k]=v; localStorage.setItem(prefsKey(), JSON.stringify(p)); }catch(e){} }
+
+/* ---------------------- Comunicação com o servidor ---------------------- */
+function csrf(){ const m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+let ocupado = false;
+async function api(metodo, url, corpo){
+  if(ocupado) return null;
+  ocupado = true; document.body.classList.add('busy');
+  try{
+    const r = await fetch(url, {method: metodo, credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()}, body: corpo ? JSON.stringify(corpo) : undefined});
+    if(r.status === 401){ location.href = '/conta/login/?next=/'; return null; }
+    let j = null; try{ j = await r.json(); }catch(e){}
+    if(!r.ok || !j){
+      toast('err', r.status === 400 ? 'Não foi possível salvar' : 'Erro no servidor', `<div>${esc(j && j.erro || (r.status === 403 ? 'Sua sessão mudou. Recarregue a página.' : 'Tente de novo em instantes.'))}</div>`);
+      return null;
+    }
+    state = j.estado; renderAll();
+    return j;
+  }catch(e){
+    toast('err', 'Sem conexão', '<div>Não foi possível falar com o servidor. Confira a internet e tente de novo.</div>');
+    return null;
+  }finally{ ocupado = false; document.body.classList.remove('busy'); }
+}
+
+/* ---------------------- Regras de negócio ---------------------- */
+function lancarNF({fornecedorId, numero, data, itens}){
+  const nf = {id: state.nextIds.nf++, fornecedorId, numero, data, itens: itens.map(it=>({...it}))};
+  let total = 0;
+  itens.forEach(it=>{
+    const mat = state.materiais.find(m=>m.id===it.materialId);
+    if(!mat) return;
+    const entrada = it.qtd*it.valorUnit;
+    const novoSaldo = mat.saldo + it.qtd;
+    mat.custoMedio = novoSaldo>0 ? (mat.saldo*mat.custoMedio + entrada)/novoSaldo : it.valorUnit;
+    mat.saldo = novoSaldo;
+    total += entrada;
+  });
+  state.notasFiscais.push(nf);
+  criarPagamento({tipo:'material', origem:/^nf/i.test(numero) ? numero : 'NF '+numero, orcamentoItemId:null, valor: total, dataProgramada: data});
+  return {nf, total};
+}
+
+function registrarConsumo({orcamentoItemId, materialId, qtd, data}){
+  const mat = state.materiais.find(m=>m.id===materialId);
+  if(!mat || mat.saldo<=0) return null;
+  const qtdConsumida = Math.min(qtd, mat.saldo);
+  const valor = qtdConsumida*mat.custoMedio;
+  mat.saldo -= qtdConsumida;
+  const pedido = {id: state.nextIds.pedido++, orcamentoItemId, materialId, qtd: qtdConsumida, qtdSolicitada:qtd, valor, data};
+  state.pedidos.push(pedido);
+  return pedido;
+}
+
+function criarContrato({empreiteiroId, orcamentoItemId, valorContratado, formaPagamento}){
+  const contrato = {id: state.nextIds.contrato++, empreiteiroId, orcamentoItemId, valorContratado, formaPagamento};
+  state.contratos.push(contrato);
+  return contrato;
+}
+
+/* % já medido (pendente + aprovado) num contrato */
+function pctMedido(contratoId, apenasAprovadas){
+  return state.medicoes.filter(m=>m.contratoId===contratoId && (!apenasAprovadas || m.status==='aprovada')).reduce((s,m)=>s+m.percentual,0);
+}
+
+function registrarMedicao({contratoId, data, percentual}){
+  const contrato = state.contratos.find(c=>c.id===contratoId);
+  const valor = contrato ? contrato.valorContratado*(percentual/100) : 0;
+  const medicao = {id: state.nextIds.medicao++, contratoId, data, percentual, valor, status:'pendente'};
+  state.medicoes.push(medicao);
+  return medicao;
+}
+
+function aprovarMedicao(medicaoId){
+  const med = state.medicoes.find(m=>m.id===medicaoId);
+  if(!med || med.status==='aprovada') return null;
+  med.status = 'aprovada';
+  const contrato = state.contratos.find(c=>c.id===med.contratoId);
+  return criarPagamento({tipo:'mao-de-obra', origem:'Medição #'+med.id, orcamentoItemId: contrato ? contrato.orcamentoItemId : null, valor: med.valor, dataProgramada: med.data, medicaoId: med.id});
+}
+
+function criarPagamento({tipo, origem, orcamentoItemId, valor, dataProgramada, medicaoId}){
+  const pag = {id: state.nextIds.pagamento++, tipo, origem, orcamentoItemId, valor, dataProgramada, dataPagamento:null, status:'programado', medicaoId: medicaoId||null};
+  state.pagamentos.push(pag);
+  return pag;
+}
+
+function marcarPago(id){ const p = state.pagamentos.find(x=>x.id===id); if(p){ p.status='pago'; p.dataPagamento = todayStr(); } }
+const vencido = p => p.status==='programado' && p.dataProgramada < todayStr();
+
+/* De onde vem o "realizado" de um serviço — cada valor rastreável até a origem */
+function origensDoItem(itemId){
+  const out = [];
+  state.pedidos.filter(p=>p.orcamentoItemId===itemId).forEach(p=>{
+    const mat = state.materiais.find(m=>m.id===p.materialId);
+    out.push({data:p.data, tipo:'Consumo de material', desc:`${fmtNum(p.qtd)} ${mat?esc(mat.unidade):''} de ${mat?esc(mat.nome):'material'} (custo médio)`, valor:p.valor});
+  });
+  const contratos = state.contratos.filter(c=>c.orcamentoItemId===itemId);
+  state.medicoes.filter(m=>m.status==='aprovada' && contratos.some(c=>c.id===m.contratoId)).forEach(m=>{
+    const c = contratos.find(c=>c.id===m.contratoId);
+    const emp = state.empreiteiros.find(e=>e.id===c.empreiteiroId);
+    out.push({data:m.data, tipo:'Medição aprovada', desc:`#${m.id} · ${emp?esc(emp.nome):'—'} · ${fmtPct(m.percentual)} do contrato`, valor:m.valor});
+  });
+  state.pagamentos.filter(p=>p.tipo==='avulso' && p.orcamentoItemId===itemId).forEach(p=>{
+    out.push({data:p.dataProgramada, tipo:'Pagamento avulso', desc:esc(p.origem), valor:p.valor});
+  });
+  return out.sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+}
+function realizadoDoItem(itemId){ return origensDoItem(itemId).reduce((s,o)=>s+o.valor,0); }
+function planejadoDoItem(item){ return item.qtd*item.precoUnit; }
+function statusClasse(pct){ if(pct>=100) return 'danger'; if(pct>=75) return 'warn'; return 'ok'; }
+function itemTemVinculo(id){
+  return state.pedidos.some(p=>p.orcamentoItemId===id) || state.contratos.some(c=>c.orcamentoItemId===id) || state.pagamentos.some(p=>p.orcamentoItemId===id);
+}
+
+/* ---------------------- Avisos e confirmação (substituem alert/confirm) ---------------------- */
+function toast(kind, title, body, ms){
+  const box = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast '+kind;
+  el.innerHTML = `<div class="t-body"><b>${esc(title)}</b>${body||''}</div><button aria-label="Fechar">×</button>`;
+  el.querySelector('button').onclick = ()=>el.remove();
+  box.appendChild(el);
+  while(box.children.length>3) box.firstChild.remove();
+  setTimeout(()=>el.remove(), ms || (kind==='err' ? 7000 : 9000));
+}
+const erro = (msg) => toast('err', 'Falta informação', esc(msg));
+
+function confirmar(title, msg, yesLabel, onYes, danger){
+  const m = document.getElementById('modal');
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-msg').textContent = msg;
+  const yes = document.getElementById('modal-yes');
+  yes.textContent = yesLabel || 'Confirmar';
+  yes.className = danger ? 'danger-btn' : 'primary';
+  const fechar = ()=>{ m.hidden = true; };
+  yes.onclick = ()=>{ fechar(); onYes(); };
+  document.getElementById('modal-no').onclick = fechar;
+  m.onclick = e=>{ if(e.target===m) fechar(); };
+  m.hidden = false;
+  yes.focus();
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('modal').hidden = true; });
+document.addEventListener('click', e=>{
+  const b = e.target.closest('button.term');
+  if(!b) return;
+  const g = GLOSSARIO[b.dataset.term];
+  if(g) toast('info', g[0], `<div>${esc(g[1])}</div>`, 12000);
+});
+
+/* ---------------------- Componentes ---------------------- */
+function rulerBar(planejado, realizado, labelEsq, labelDir){
+  const pct = planejado>0 ? (realizado/planejado*100) : 0;
+  return `
+    <div class="ruler-wrap">
+      ${(labelEsq||labelDir) ? `<div class="ruler-labels"><span>${labelEsq}</span><span>${labelDir}</span></div>` : ''}
+      <div class="ruler-bar" role="img" aria-label="${fmtPct(pct)}">
+        <div class="ruler-fill ${statusClasse(pct)}" style="width:${Math.min(pct,100)}%"></div>
+        <div class="ruler-pct">${fmtPct(pct)}</div>
+      </div>
+    </div>`;
+}
+function pill(text, cls){ return `<span class="pill ${cls}">${text}</span>`; }
+
+function intro(id, titulo, corpo, automatico){
+  const fechado = prefs()['intro-'+id] === false;
+  return `<details class="intro" data-intro="${id}" ${fechado?'':'open'}>
+    <summary>${titulo}</summary>
+    <div class="intro-body">${corpo}${automatico?`<div class="auto">O que o sistema faz sozinho: ${automatico}</div>`:''}</div>
+  </details>`;
+}
+
+/* ---------------------- Ícones ---------------------- */
+const ICO = {
+  home:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  list:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  box:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+  truck:'<path d="M3 6h11v10H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  doc:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/>',
+  wallet:'<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="15" r="1.2"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17.5h.01"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  bell:'<path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  book:'<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4z"/><path d="M20 4h-4a3 3 0 0 0-3 3"/><path d="M20 4v14h-7"/>',
+  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  collapse:'<path d="M11 6l-6 6 6 6"/><path d="M19 4v16"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  file:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M12 11v6M9 14h6"/>',
+};
+const ic = (n, s) => `<svg width="${s||20}" height="${s||20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
+const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+
+/* ---------------------- Módulos, menu e funções pesquisáveis ---------------------- */
+const MODULOS = [
+  {id:'inicio', label:'Início', icon:'home', items:[
+    {label:'Mural', tab:'inicio', keys:'home inicio resumo'},
+    {label:'Painel da obra', tab:'dashboard', keys:'dashboard indicadores avanco'},
+    {label:'Dados da obra e planilhas', tab:'dados', keys:'excel importar exportar planilha prazo cliente'},
+  ]},
+  {id:'orcamento', label:'Orçamento', icon:'list', items:[
+    {label:'Serviços do orçamento', tab:'orcamento', keys:'etapa avanco fisico realizado'},
+    {label:'Adicionar serviço', tab:'orcamento', anchor:'form-orc', keys:'novo item linha orcamento'},
+  ]},
+  {id:'estoque', label:'Estoque', icon:'box', items:[
+    {label:'Saldo de materiais', tab:'estoque', anchor:'sec-saldo', keys:'custo medio'},
+    {label:'Lançar nota fiscal', tab:'estoque', anchor:'nf-formbox', keys:'nf entrada compra chegou material'},
+    {label:'Notas fiscais lançadas', tab:'estoque', anchor:'sec-nfs', keys:'nf'},
+    {label:'Cadastrar material', tab:'estoque', anchor:'form-mat', keys:'insumo novo'},
+  ]},
+  {id:'suprimentos', label:'Suprimentos', icon:'truck', items:[
+    {label:'Uso de material', tab:'suprimentos', anchor:'sec-uso', keys:'consumo requisicao'},
+    {label:'Registrar uso de material', tab:'suprimentos', anchor:'form-uso', keys:'consumo requisicao retirada baixa'},
+    {label:'Fornecedores', tab:'suprimentos', anchor:'sec-forn'},
+    {label:'Cadastrar fornecedor', tab:'suprimentos', anchor:'form-forn'},
+  ]},
+  {id:'contratos', label:'Contratos e Medições', icon:'doc', items:[
+    {label:'Medições', tab:'contratos', anchor:'sec-med', keys:'aprovar'},
+    {label:'Registrar medição', tab:'contratos', anchor:'form-med'},
+    {label:'Contratos', tab:'contratos', anchor:'sec-ctr', keys:'empreiteiro mao de obra'},
+    {label:'Novo contrato', tab:'contratos', anchor:'form-ctr'},
+    {label:'Cadastrar empreiteiro', tab:'contratos', anchor:'form-emp'},
+  ]},
+  {id:'financeiro', label:'Financeiro', icon:'wallet', items:[
+    {label:'Pagamentos', tab:'financeiro', anchor:'sec-pag', keys:'contas a pagar vencimento pago vencido'},
+    {label:'Lançar pagamento avulso', tab:'financeiro', anchor:'form-pag', keys:'despesa taxa'},
+  ]},
+  {id:'ajuda', label:'Ajuda', icon:'help', items:[
+    {label:'Comece aqui', tab:'guia', keys:'tutorial como funciona ajuda'},
+    {label:'Glossário', tab:'guia', anchor:'glossario', keys:'significado termos'},
+  ]},
+];
+const FUNCOES = MODULOS.flatMap(m=>m.items.map(it=>Object.assign({}, it, {mod:m.id, path:m.label+' / '+it.label})));
+const moduloDaTab = tab => MODULOS.find(m=>m.items.some(i=>i.tab===tab)) || MODULOS[0];
+const funcaoDe = (tab, anchor) => FUNCOES.find(f=>f.tab===tab && (f.anchor||null)===(anchor||null)) || FUNCOES.find(f=>f.tab===tab);
+
+let currentTab = prefs().tab || 'inicio';
+let currentAnchor = null;
+const menuAberto = new Set();
+
+function registrarRecente(tab, anchor){
+  const f = funcaoDe(tab, anchor);
+  if(!f || f.tab==='inicio') return;
+  const lista = (prefs().recentes || []).filter(r=>!(r.tab===f.tab && (r.anchor||null)===(f.anchor||null)));
+  lista.unshift({tab:f.tab, anchor:f.anchor||null});
+  setPref('recentes', lista.slice(0,6));
+}
+
+function irPara(tab, anchor){
+  currentTab = tab; currentAnchor = anchor || null; setPref('tab', tab);
+  menuAberto.clear(); menuAberto.add(moduloDaTab(tab).id);
+  registrarRecente(tab, anchor);
+  fecharMenuMobile();
+  renderAll();
+  if(anchor){
+    const el = document.getElementById(anchor);
+    if(el){
+      if(el.tagName==='DETAILS') el.open = true;
+      el.scrollIntoView({block:'start'});
+      el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'), 1500);
+      if(el.tagName==='DETAILS'){ const f = el.querySelector('input:not([type=file]), select'); if(f) f.focus({preventScroll:true}); }
+    }
+  } else window.scrollTo({top:0});
+}
+
+/* ---------------------- Avisos (sino + mural) ---------------------- */
+function avisos(){
+  const out = [];
+  if(!state.orcamento.length) out.push({kind:'warn', titulo:'Cadastre o orçamento da obra', sub:'Sem orçamento, nada pode ser comparado', tab:'orcamento', anchor:'form-orc'});
+  state.pagamentos.filter(vencido).sort((a,b)=>a.dataProgramada.localeCompare(b.dataProgramada)).forEach(p=>
+    out.push({kind:'danger', titulo:'Pagamento vencido: '+p.origem, sub:fmtMoney(p.valor)+' · venceu em '+fmtDate(p.dataProgramada), tab:'financeiro', anchor:'sec-pag'}));
+  state.medicoes.filter(m=>m.status==='pendente').forEach(m=>{
+    const c = state.contratos.find(c=>c.id===m.contratoId); const emp = c ? state.empreiteiros.find(e=>e.id===c.empreiteiroId) : null;
+    out.push({kind:'warn', titulo:'Medição esperando aprovação', sub:(emp?emp.nome:'—')+' · '+fmtPct(m.percentual)+' · '+fmtMoney(m.valor), tab:'contratos', anchor:'sec-med'});
+  });
+  state.orcamento.forEach(i=>{
+    const plan = planejadoDoItem(i); const pct = plan>0 ? realizadoDoItem(i.id)/plan*100 : 0;
+    if(pct>=100) out.push({kind:'danger', titulo:'Serviço passou do orçado: '+i.servico, sub:fmtPct(pct)+' do planejado', tab:'orcamento'});
+    else if(pct>=75) out.push({kind:'warn', titulo:'Serviço perto do limite: '+i.servico, sub:fmtPct(pct)+' do planejado', tab:'orcamento'});
+  });
+  if(!state.obra.prazo) out.push({kind:'warn', titulo:'Informe o prazo de entrega', sub:'Usado para contar os dias até a entrega', tab:'dados'});
+  return out;
+}
+const goAttr = (tab, anchor) => `data-go="${tab}${anchor?'|'+anchor:''}"`;
+function linhaAviso(a){
+  return `<button class="prow" ${goAttr(a.tab, a.anchor)}><span class="tile ${a.kind==='danger'?'coral':'amber'}" style="width:28px;height:28px;border-radius:50%;">${ic('alert',16)}</span><span class="pt"><b>${esc(a.titulo)}</b><small>${esc(a.sub)}</small></span></button>`;
+}
+
+/* ---------------------- Menu, cabeçalho, rodapé ---------------------- */
+function renderMenu(){
+  const mod = moduloDaTab(currentTab);
+  menuAberto.add(mod.id);
+  const medPend = state.medicoes.filter(m=>m.status==='pendente').length;
+  const venc = state.pagamentos.filter(vencido).length;
+  const ativa = funcaoDe(currentTab, currentAnchor);
+  const menu = document.getElementById('menu');
+  menu.innerHTML = `<div class="menu-head"><span>Navegação</span><button id="btn-collapse" aria-label="Recolher menu" title="Recolher menu">${ic('collapse',18)}</button></div>`
+    + MODULOS.map(m=>`<details class="mgroup" data-mg="${m.id}" ${menuAberto.has(m.id)?'open':''}><summary>${m.label}${(m.id==='contratos'&&medPend)||(m.id==='financeiro'&&venc) ? `<span class="badge" style="margin-left:auto;background:var(--red);color:var(--white);font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;">${m.id==='contratos'?medPend:venc}</span>` : ''}</summary>
+      ${m.items.map(it=>{
+        const n = it.anchor==='sec-med' ? medPend : it.anchor==='sec-pag' ? venc : 0;
+        return `<button class="mitem ${ativa===FUNCOES.find(f=>f.tab===it.tab && f.anchor===it.anchor && f.label===it.label)?'active':''}" ${goAttr(it.tab, it.anchor)}>${it.label}${n?`<span class="badge">${n}</span>`:''}</button>`;
+      }).join('')}</details>`).join('');
+  menu.querySelectorAll('details.mgroup').forEach(d=> d.addEventListener('toggle', ()=>{ d.open ? menuAberto.add(d.dataset.mg) : menuAberto.delete(d.dataset.mg); }));
+  document.getElementById('btn-collapse').onclick = recolherMenu;
+}
+
+function abrirMenuMobile(){ document.getElementById('frame').classList.add('menu-open'); document.getElementById('scrim').hidden = false; }
+function fecharMenuMobile(){ document.getElementById('frame').classList.remove('menu-open'); document.getElementById('scrim').hidden = true; }
+function recolherMenu(){
+  if(window.matchMedia('(max-width:860px)').matches){ fecharMenuMobile(); return; }
+  const f = document.getElementById('frame'); f.classList.toggle('menu-collapsed'); setPref('menuRecolhido', f.classList.contains('menu-collapsed'));
+}
+
+function renderTopbar(){
+  document.getElementById('topbar').innerHTML = `
+    <button class="icon-btn menu-toggle" id="btn-menu" aria-label="Abrir menu">${ic('menu')}</button>
+    <button class="icon-btn menu-reopen" id="btn-reopen" aria-label="Mostrar menu" title="Mostrar menu">${ic('menu')}</button>
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <rect width="30" height="30" rx="6" fill="#1C2533"/>
+        <path d="M7 22 L15 8 L23 22" stroke="#FFFFFF" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
+        <path d="M11 22 L15 15 L19 22" stroke="#E07B24" stroke-width="2" fill="none" stroke-linejoin="round"/>
+      </svg>
+      <div><b>ObraSimples</b><small>Controle de obra</small></div>
+    </div>
+    <button class="obra-chip" id="obra-chip" title="Dados da obra"><i></i><span id="obra-chip-txt"></span></button>
+    <div class="top-right">
+      <div class="search">${ic('search',18)}<input id="busca" type="search" placeholder="Pesquise uma funcionalidade…" autocomplete="off" aria-label="Pesquisar funcionalidade"><div class="dropdown" id="busca-res" hidden></div></div>
+      <div class="notif-wrap"><button class="icon-btn" id="btn-notif" aria-label="Avisos">${ic('bell')}<span class="dot" id="notif-dot" hidden></span></button><div class="dropdown wide" id="notif-list" hidden></div></div>
+      <button class="icon-btn" data-go="guia" aria-label="Como funciona" title="Como funciona">${ic('help')}</button>
+      <div class="notif-wrap" id="user-wrap"><button class="icon-btn avatar" id="btn-user" aria-label="Minha conta" title="Minha conta"></button><div class="dropdown wide" id="user-menu" hidden></div></div>
+    </div>`;
+  document.getElementById('btn-menu').onclick = abrirMenuMobile;
+  document.getElementById('btn-reopen').onclick = recolherMenu;
+  document.getElementById('scrim').onclick = fecharMenuMobile;
+  document.getElementById('obra-chip').onclick = ()=>irPara('dados');
+
+  const inp = document.getElementById('busca'), res = document.getElementById('busca-res');
+  let sel = 0, itens = [];
+  const desenhar = ()=>{
+    const q = inp.value.trim();
+    if(!q){
+      const rec = (prefs().recentes||[]).map(r=>funcaoDe(r.tab, r.anchor)).filter(Boolean);
+      itens = (rec.length ? rec : FUNCOES.filter(f=>['nf-formbox','form-uso','form-med','sec-pag'].includes(f.anchor))).map(f=>({f}));
+      res.innerHTML = `<div class="dd-head">${rec.length?'Acessados recentemente':'Mais usados'}</div>` + itens.map((x,i)=>`<button class="dd-item ${i===sel?'sel':''}" data-i="${i}"><b>${esc(x.f.label)}</b><small>${esc(x.f.path)}</small></button>`).join('');
+    } else {
+      const termos = norm(q).split(/\s+/).filter(Boolean);
+      const fn = FUNCOES.filter(f=>termos.every(t=>norm(f.path+' '+(f.keys||'')).includes(t))).map(f=>({f}));
+      const gl = Object.entries(GLOSSARIO).filter(([k,v])=>termos.every(t=>norm(v[0]).includes(t))).map(([k,v])=>({termo:k, v}));
+      itens = fn.concat(gl);
+      res.innerHTML = itens.length ? itens.map((x,i)=> x.f
+        ? `<button class="dd-item ${i===sel?'sel':''}" data-i="${i}"><b>${esc(x.f.label)}</b><small>${esc(x.f.path)}</small></button>`
+        : `<button class="dd-item ${i===sel?'sel':''}" data-i="${i}"><b>${esc(x.v[0])}</b><small>Glossário · o que significa</small></button>`).join('')
+        : `<div class="dd-empty">Nada encontrado para "${esc(q)}". Tente "nota", "medição" ou "pagamento".</div>`;
+    }
+    res.hidden = false;
+  };
+  const escolher = i=>{
+    const x = itens[i]; if(!x) return;
+    res.hidden = true; inp.value = ''; inp.blur();
+    if(x.f) irPara(x.f.tab, x.f.anchor); else toast('info', x.v[0], `<div>${esc(x.v[1])}</div>`, 12000);
+  };
+  inp.addEventListener('focus', ()=>{ sel = 0; desenhar(); });
+  inp.addEventListener('input', ()=>{ sel = 0; desenhar(); });
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); sel = Math.min(sel+1, itens.length-1); desenhar(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); sel = Math.max(sel-1, 0); desenhar(); }
+    else if(e.key==='Enter'){ e.preventDefault(); escolher(sel); }
+    else if(e.key==='Escape'){ res.hidden = true; inp.blur(); }
+  });
+  inp.addEventListener('blur', ()=> setTimeout(()=>{ res.hidden = true; }, 180));
+  res.addEventListener('mousedown', e=>{ const b = e.target.closest('[data-i]'); if(b){ e.preventDefault(); escolher(parseInt(b.dataset.i)); } });
+
+  const btnN = document.getElementById('btn-notif'), lista = document.getElementById('notif-list');
+  btnN.onclick = e=>{
+    e.stopPropagation();
+    if(!lista.hidden){ lista.hidden = true; return; }
+    const av = avisos();
+    lista.innerHTML = `<div class="dd-head">Avisos e notificações</div>` + (av.length ? av.map(a=>`<button class="dd-item" ${goAttr(a.tab, a.anchor)}><b>${esc(a.titulo)}</b><small>${esc(a.sub)}</small></button>`).join('') : '<div class="dd-empty">Tudo em dia. Nenhum aviso.</div>');
+    lista.hidden = false;
+  };
+  const btnU = document.getElementById('btn-user'), menuU = document.getElementById('user-menu');
+  btnU.onclick = e=>{
+    e.stopPropagation(); lista.hidden = true;
+    if(!menuU.hidden){ menuU.hidden = true; return; }
+    const u = state && state.usuario || {nome:'', login:''};
+    menuU.innerHTML = `<div class="dd-head">${esc(u.nome)}${u.nome!==u.login?' · '+esc(u.login):''}</div>
+      <a class="dd-item" href="/conta/password_change/"><b>Trocar senha</b><small>Defina uma senha só sua</small></a>
+      ${u.admin ? '<a class="dd-item" href="/admin/"><b>Administração</b><small>Usuários, senhas e obras de todos</small></a>' : ''}
+      <form method="post" action="/conta/logout/" style="margin:0"><input type="hidden" name="csrfmiddlewaretoken" value="${esc(csrf())}"><button class="dd-item" type="submit"><b>Sair</b><small>Encerrar a sessão neste aparelho</small></button></form>`;
+    menuU.hidden = false;
+  };
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('#btn-notif') && !e.target.closest('#notif-list')) lista.hidden = true;
+    if(!e.target.closest('#user-wrap')) menuU.hidden = true;
+  });
+}
+
+function updateTopbar(){
+  const o = state.obra;
+  document.getElementById('obra-chip-txt').textContent = (o.nome||'Minha obra') + (o.prazo ? ' · entrega '+fmtDate(o.prazo) : '');
+  const u = state.usuario || {nome:'?'};
+  document.getElementById('btn-user').textContent = (u.nome||'?').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+  const n = avisos().length, dot = document.getElementById('notif-dot');
+  dot.textContent = n; dot.hidden = !n;
+}
+function renderStatus(){
+  document.getElementById('statusbar').innerHTML = `<span>Obra: <b>${esc(state.obra.nome||'Minha obra')}</b></span><span>${state.exemplo?'Dados de exemplo · ':''}Salvo no servidor</span><span>ObraSimples · protótipo v0.3</span>`;
+}
+
+/* Cliques em qualquer elemento com data-go (menu, mural, avisos, atalhos) */
+document.addEventListener('click', e=>{
+  const g = e.target.closest('[data-go]');
+  if(g){ const [tab, anchor] = g.dataset.go.split('|'); document.getElementById('notif-list') && (document.getElementById('notif-list').hidden = true); irPara(tab, anchor); return; }
+  const tr = e.target.closest('[data-termrow]');
+  if(tr){ const v = GLOSSARIO[tr.dataset.termrow]; toast('info', v[0], `<div>${esc(v[1])}</div>`, 12000); }
+});
+
+/* ---------------------- Resumo da obra (usado no mural) ---------------------- */
+function resumoObra(){
+  const totalPlanejado = state.orcamento.reduce((s,i)=>s+planejadoDoItem(i),0);
+  const totalRealizado = state.orcamento.reduce((s,i)=>s+realizadoDoItem(i.id),0);
+  const pctGeral = totalPlanejado>0 ? totalRealizado/totalPlanejado*100 : 0;
+  const etapas = [...new Set(state.orcamento.map(i=>i.etapa))];
+  const avancoFisico = totalPlanejado>0 ? etapas.reduce((s,et)=>s + state.orcamento.filter(i=>i.etapa===et).reduce((s2,i)=>s2+planejadoDoItem(i),0)*(state.etapaAvanco[et]||0),0)/totalPlanejado : 0;
+  const dias = state.obra.prazo ? Math.ceil((new Date(state.obra.prazo+'T00:00:00') - new Date(new Date().toDateString()))/86400000) : null;
+  const gap = pctGeral - avancoFisico;
+  const leitura = !totalPlanejado ? '' : gap > 10 ? `O gasto está ${fmtPct(gap)} à frente do que já está pronto. Vale investigar onde está gastando mais do que entregando.`
+    : gap < -10 ? `A obra está mais adiantada do que o gasto. Bom sinal, ou há gastos ainda não lançados.` : `Gasto e avanço estão andando juntos. É o cenário esperado.`;
+  return {totalPlanejado, totalRealizado, pctGeral, avancoFisico, dias, leitura};
+}
+
+/* ---------------------- MURAL (INÍCIO) ---------------------- */
+function renderInicio(){
+  const r = resumoObra();
+  const prog = state.pagamentos.filter(p=>p.status==='programado').sort((a,b)=>a.dataProgramada.localeCompare(b.dataProgramada));
+  const pagos = state.pagamentos.filter(p=>p.status==='pago').sort((a,b)=>String(b.dataPagamento).localeCompare(String(a.dataPagamento))).slice(0,3);
+  const av = avisos();
+  let rec = (prefs().recentes||[]).map(x=>funcaoDe(x.tab, x.anchor)).filter(Boolean);
+  const sugestao = !rec.length;
+  if(sugestao) rec = ['guia','nf-formbox','form-uso','sec-med'].map(k=> k==='guia' ? funcaoDe('guia') : FUNCOES.find(f=>f.anchor===k));
+  const linhaPag = (p, data) => { const d = new Date((data||p.dataProgramada)+'T00:00:00'); const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
+    return `<button class="prow" ${goAttr('financeiro','sec-pag')}><span class="datebox ${vencido(p)?'late':''}"><b>${d.getDate()}</b><small>${MESES[d.getMonth()]}</small></span><span class="pt"><b>${esc(p.origem)}</b><small>${p.tipo==='material'?'Material':p.tipo==='mao-de-obra'?'Mão de obra':'Avulso'}${item?' · '+esc(item.servico):''}${vencido(p)?' · vencido':''}</small></span><span class="val">${fmtMoney(p.valor)}</span></button>`; };
+  const hoje = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'});
+  const atalhos = [['nf-formbox','file','Lançar nota fiscal'],['form-uso','box','Registrar uso de material'],['form-med','doc','Registrar medição'],['form-pag','wallet','Lançar pagamento avulso'],['form-orc','plus','Adicionar serviço'],['dados','gear','Planilhas e dados da obra']];
+  return `
+    <h2 class="home-hello">Olá! Assim está a ${esc(state.obra.nome||'sua obra')} hoje.</h2>
+    <p class="section-sub">${hoje.charAt(0).toUpperCase()+hoje.slice(1)}${state.exemplo?' · você está vendo dados de exemplo':''}</p>
+
+    <div class="home-top">
+      <div class="hero" style="margin:0;">
+        <div class="hero-top"><h3>Avanço geral da obra</h3><span class="mono">${r.dias===null ? 'Prazo de entrega não informado' : r.dias>=0 ? r.dias+' dias até a entrega' : Math.abs(r.dias)+' dias de atraso'}</span></div>
+        <div class="hero-grid">
+          <div><div class="hero-figure">${fmtPct(r.avancoFisico)}</div>${rulerBar(100, r.avancoFisico, 'Quanto está pronto', '')}</div>
+          <div><div class="hero-figure">${fmtPct(r.pctGeral)}</div>${rulerBar(r.totalPlanejado, r.totalRealizado, 'Quanto do orçamento foi gasto', fmtMoney(r.totalRealizado)+' de '+fmtMoney(r.totalPlanejado))}</div>
+        </div>
+        ${r.leitura ? `<div class="hero-note">${r.leitura}</div>` : ''}
+        <div class="cta"><button data-go="dashboard">Ver painel completo</button><button class="alt" data-go="guia">Primeira vez aqui? Veja como funciona</button></div>
+      </div>
+      <section class="panel">
+        <div class="panel-head"><span class="tile teal">${ic('calendar')}</span><h3>Próximos vencimentos</h3></div>
+        <div class="plist">
+          ${prog.length ? prog.slice(0,5).map(p=>linhaPag(p)).join('') : '<div class="pempty">Nenhum pagamento programado.</div>'}
+          ${pagos.length ? `<div class="psep">Pagos recentemente</div>${pagos.map(p=>linhaPag(p, p.dataPagamento)).join('')}` : ''}
+        </div>
+      </section>
+    </div>
+
+    <h3 class="mural-title">Seu mural</h3>
+    <div class="home-row">
+      <section class="panel">
+        <div class="panel-head"><span class="tile teal">${ic('clock')}</span><h3>${sugestao?'Por onde começar':'Acessados recentemente'}</h3></div>
+        <div class="plist">${rec.map(f=>`<button class="prow" ${goAttr(f.tab, f.anchor)}><span class="star">${ic('star',18)}</span><span class="pt"><b>${esc(f.label)}</b><small>${esc(f.path)}</small></span></button>`).join('')}</div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><span class="tile coral">${ic('alert')}</span><h3>Avisos e notificações</h3></div>
+        <div class="plist">${av.length ? av.map(linhaAviso).join('') : '<div class="pempty">Tudo em dia. Nenhum pagamento vencido, medição pendente ou serviço perto de estourar.</div>'}</div>
+      </section>
+    </div>
+    <div class="home-row">
+      <section class="panel">
+        <div class="panel-head"><span class="tile amber">${ic('bolt')}</span><h3>Atalhos</h3></div>
+        <div class="quick">${atalhos.map(([k,i,l])=>`<button ${k==='dados'?goAttr('dados'):goAttr(FUNCOES.find(f=>f.anchor===k).tab, k)}>${ic(i,20)}<span>${l}</span></button>`).join('')}</div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><span class="tile blue">${ic('book')}</span><h3>Aprenda a usar</h3></div>
+        <div class="plist">
+          <button class="prow" ${goAttr('guia')}><span class="pt"><b>Como o ObraSimples funciona</b><small>Os dois caminhos: material e mão de obra</small></span></button>
+          <button class="prow" ${goAttr('guia','tour')}><span class="pt"><b>Teste em 5 minutos</b><small>Siga os passos e veja os números mudarem</small></span></button>
+          <button class="prow" ${goAttr('guia','por-que')}><span class="pt"><b>Por que a compra não vira gasto na hora?</b><small>Estoque × realizado</small></span></button>
+          <button class="prow" data-termrow="medicao"><span class="pt"><b>O que é medição?</b><small>Glossário</small></span></button>
+          <button class="prow" data-termrow="customedio"><span class="pt"><b>Custo médio na prática</b><small>Glossário</small></span></button>
+        </div>
+      </section>
+    </div>`;
+}
+
+/* ---------------------- DADOS DA OBRA E PLANILHAS ---------------------- */
+function renderDados(){
+  const o = state.obra;
+  return `
+    <h2 class="section-title">Dados da obra e planilhas</h2>
+    <p class="section-sub">Informações gerais, Excel e recomeço</p>
+    <div class="card" style="margin-bottom:18px;" id="sec-obra">
+      <h3>Dados da obra</h3>
+      <div class="formgrid" style="padding:0;">
+        <div><label for="d-nome">Nome da obra</label><input id="d-nome" value="${esc(o.nome)}" data-obra="nome"></div>
+        <div><label for="d-cliente">Cliente</label><input id="d-cliente" value="${esc(o.cliente)}" data-obra="cliente" placeholder="Nome do cliente"></div>
+        <div><label for="d-prazo">Prazo de entrega</label><input id="d-prazo" type="date" value="${esc(o.prazo)}" data-obra="prazo"></div>
+        <div><label for="d-valor">Valor contratado com o cliente (R$)</label><input id="d-valor" type="number" step="0.01" inputmode="decimal" value="${o.valorContratado||''}" data-obra="valorContratado"></div>
+      </div>
+      <p class="helptext" style="margin:12px 0 0;">As alterações são salvas assim que você sai do campo.</p>
+    </div>
+    <div class="card" style="margin-bottom:18px;" id="sec-planilhas">
+      <h3>Planilhas (Excel)</h3>
+      <p class="helptext">Baixe o modelo para montar o orçamento no Excel e depois importe aqui. Ou exporte a obra inteira para guardar uma cópia. Ao importar, só as abas presentes no arquivo são substituídas. O resto continua como está.</p>
+      <div class="btn-row">
+        <button class="ghost" onclick="baixarModeloOrcamento()">Baixar modelo de orçamento</button>
+        <button class="ghost" onclick="exportarDadosCompletos()">Exportar a obra inteira</button>
+        <label class="ghost" tabindex="0" onkeydown="if(event.key==='Enter')this.click()">Importar planilha
+          <input type="file" id="f-import-file" accept=".xlsx,.xls" onchange="handleImportarPlanilha(event)">
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Recomeçar</h3>
+      <p class="helptext">Apaga os dados desta obra no servidor. Exporte a planilha antes se quiser guardar uma cópia.</p>
+      <div class="btn-row">
+        <button class="ghost" onclick="pedirReset('exemplo')">Voltar aos dados de exemplo</button>
+        <button class="ghost" onclick="pedirReset('vazio')">Começar uma obra em branco</button>
+      </div>
+    </div>`;
+}
+
+/* ---------------------- GUIA ---------------------- */
+function renderGuia(){
+  const fluxo = (passos) => `<div class="flow">${passos.map((p,i)=>`
+    ${i?'<div class="flow-arrow" aria-hidden="true">→</div>':''}
+    <button class="flow-step" onclick="irPara('${p.tab}')"><span class="n">Passo ${i+1} · ${p.onde}</span><b>${p.titulo}</b><span>${p.txt}</span></button>`).join('')}</div>`;
+  return `
+    <h2 class="section-title">Como o ObraSimples funciona</h2>
+    <p class="section-sub">Guia rápido para quem nunca usou um sistema de gestão</p>
+    <p class="guide-lead">Pense no sistema como o caderno da obra, só que ele faz as contas sozinho. Você anota o que planejou gastar, o que comprou, o que usou e o que pagou. Ele mostra, a qualquer momento, se a obra está dentro do orçamento e quanto falta pagar.</p>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Regra de ouro: todo gasto é ligado a um serviço</h3>
+      <p class="helptext" style="margin-top:0;">Você não lança "gastei R$ 5 mil". Você lança "usei 180 sacos de cimento nas sapatas" ou "aprovei 40% da alvenaria do empreiteiro". Assim o sistema sabe exatamente onde o dinheiro foi parar e compara com o que foi orçado.</p>
+      <div class="card-flex-head" style="margin-bottom:6px;"><h3 style="font-size:14px;">Caminho do material</h3></div>
+      ${fluxo([
+        {tab:'orcamento', onde:'Orçamento', titulo:'Planeje', txt:'Cadastre cada serviço com quantidade e preço. Isso vira a meta de gasto.'},
+        {tab:'estoque', onde:'Estoque', titulo:'Compre', txt:'Chegou material? Lance a nota fiscal. O material entra no estoque e a conta a pagar é criada.'},
+        {tab:'suprimentos', onde:'Suprimentos', titulo:'Use', txt:'Retirou material para um serviço? Registre o consumo. Aí ele vira gasto daquele serviço.'},
+        {tab:'financeiro', onde:'Financeiro', titulo:'Pague', txt:'Quando o dinheiro sair, marque o pagamento como pago.'},
+      ])}
+      <div style="height:18px"></div>
+      <div class="card-flex-head" style="margin-bottom:6px;"><h3 style="font-size:14px;">Caminho da mão de obra</h3></div>
+      ${fluxo([
+        {tab:'contratos', onde:'Contratos', titulo:'Contrate', txt:'Combine o valor com o empreiteiro e ligue o contrato a um serviço do orçamento.'},
+        {tab:'contratos', onde:'Contratos', titulo:'Meça', txt:'De tempos em tempos, registre quanto (%) ele executou.'},
+        {tab:'contratos', onde:'Contratos', titulo:'Aprove', txt:'Conferiu na obra? Aprove. Vira gasto do serviço e gera o pagamento.'},
+        {tab:'financeiro', onde:'Financeiro', titulo:'Pague', txt:'Marque como pago quando o dinheiro sair.'},
+      ])}
+    </div>
+
+    <div class="callout" id="por-que" style="margin-bottom:18px;scroll-margin-top:80px;">
+      <b>Por que a compra não aparece como gasto do serviço na hora?</b>
+      Porque material comprado pode ficar parado no estoque, ou ser usado em vários serviços. Se você compra 400 sacos de cimento e usa 180 nas sapatas, só esses 180 contam como gasto das sapatas. Os outros 220 continuam no estoque, valendo dinheiro, até alguém usar. A dívida com o fornecedor, essa sim, aparece no Financeiro assim que a nota é lançada.
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:18px;">
+      <div class="card" id="tour" style="scroll-margin-top:80px;">
+        <h3>Teste em 5 minutos</h3>
+        <p class="helptext" style="margin-top:0;">A obra já vem com dados de exemplo. Siga os passos e veja os números se mexerem.</p>
+        <ol class="tour">
+          <li><div>Abra o <b>Painel</b> e veja como a obra está: quanto foi gasto, quanto está pronto e o que precisa de atenção.<br><button class="ghost" onclick="irPara('dashboard')">Abrir Painel</button></div></li>
+          <li><div>No <b>Estoque</b>, lance uma nota fiscal: 300 m² de Porcelanato 60x60 a R$ 62,00, fornecedor Cerâmica Costa do Sol. Veja o saldo subir.<br><button class="ghost" onclick="irPara('estoque')">Abrir Estoque</button></div></li>
+          <li><div>Em <b>Suprimentos</b>, registre o consumo de 120 m² de porcelanato no serviço "Revestimento cerâmico".<br><button class="ghost" onclick="irPara('suprimentos')">Abrir Suprimentos</button></div></li>
+          <li><div>Em <b>Contratos & Medições</b>, aprove a medição pendente da Elétrica Santos.<br><button class="ghost" onclick="irPara('contratos')">Abrir Contratos</button></div></li>
+          <li><div>No <b>Financeiro</b>, marque um pagamento como pago. Depois volte ao Painel: a régua do Acabamento e da Instalação elétrica mudou.<br><button class="ghost" onclick="irPara('financeiro')">Abrir Financeiro</button></div></li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Seus dados</h3>
+        <p class="helptext" style="margin-top:0;">Tudo o que você lança fica salvo no servidor, na sua conta. Você pode entrar de qualquer computador ou celular e encontrar a obra do jeito que deixou. Só você e o administrador do sistema veem esta obra.</p>
+        <div class="btn-row" style="flex-direction:column;align-items:flex-start;">
+          <button class="ghost" onclick="pedirReset('exemplo')">Voltar aos dados de exemplo</button>
+          <button class="ghost" onclick="pedirReset('vazio')">Começar uma obra em branco</button>
+        </div>
+        <div class="divider"></div>
+        <h3>Cores das réguas</h3>
+        <div class="alert-row info" style="background:var(--green-soft);color:var(--green);border-left-color:var(--green);">Verde: gastou menos de 75% do orçado</div>
+        <div class="alert-row warn">Amarelo: entre 75% e 100%. Atenção</div>
+        <div class="alert-row danger">Vermelho: passou do orçado</div>
+      </div>
+    </div>
+
+    <div class="card" id="glossario">
+      <h3>Glossário</h3>
+      <p class="helptext" style="margin-top:0;">Em todas as telas, palavras <button class="term" data-term="medicao">sublinhadas assim</button> mostram a explicação quando você toca nelas.</p>
+      <dl class="glossary">${Object.values(GLOSSARIO).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    </div>
+  `;
+}
+
+function pedirReset(tipo){
+  confirmar(
+    tipo==='exemplo' ? 'Voltar aos dados de exemplo?' : 'Começar uma obra em branco?',
+    'Tudo o que você lançou nesta obra será apagado do servidor. Se quiser guardar, exporte a planilha em Dados da obra e planilhas antes.',
+    tipo==='exemplo' ? 'Apagar e carregar exemplo' : 'Apagar e começar do zero',
+    async ()=>{
+      if(!(await api('POST', '/api/recomecar', {tipo}))) return;
+      nfDraft = novoNfDraft();
+      irPara(tipo==='exemplo' ? 'inicio' : 'orcamento', tipo==='exemplo' ? null : 'form-orc');
+      toast('ok', tipo==='exemplo' ? 'Dados de exemplo carregados' : 'Obra em branco', tipo==='exemplo' ? '' : '<div>Comece cadastrando os serviços do orçamento, ou importe uma planilha em Dados da obra e planilhas.</div>');
+    }, true);
+}
+
+/* ---------------------- PAINEL ---------------------- */
+function renderDashboard(){
+  const totalPlanejado = state.orcamento.reduce((s,i)=>s+planejadoDoItem(i),0);
+  const totalRealizado = state.orcamento.reduce((s,i)=>s+realizadoDoItem(i.id),0);
+  const pctGeral = totalPlanejado>0 ? totalRealizado/totalPlanejado*100 : 0;
+  const valorEstoque = state.materiais.reduce((s,m)=>s+m.saldo*m.custoMedio,0);
+  const programados = state.pagamentos.filter(p=>p.status==='programado');
+  const vencidos = programados.filter(vencido);
+  const proximos = programados.slice().sort((a,b)=>a.dataProgramada.localeCompare(b.dataProgramada)).slice(0,5);
+  const alertas = state.orcamento.map(i=>({item:i, pct: planejadoDoItem(i)>0 ? realizadoDoItem(i.id)/planejadoDoItem(i)*100 : 0})).filter(x=>x.pct>=75).sort((a,b)=>b.pct-a.pct);
+  const medPend = state.medicoes.filter(m=>m.status==='pendente');
+  const etapas = [...new Set(state.orcamento.map(i=>i.etapa))];
+  const avancoFisico = totalPlanejado>0 ? etapas.reduce((s,et)=>{
+      const plan = state.orcamento.filter(i=>i.etapa===et).reduce((s2,i)=>s2+planejadoDoItem(i),0);
+      return s + plan*(state.etapaAvanco[et]||0);
+    },0)/totalPlanejado : 0;
+  const temPrazo = !!state.obra.prazo;
+  const dias = temPrazo ? Math.ceil((new Date(state.obra.prazo+'T00:00:00') - new Date(new Date().toDateString()))/86400000) : null;
+  const gap = pctGeral - avancoFisico;
+  let leitura = '';
+  if(totalPlanejado>0){
+    if(gap > 10) leitura = `O gasto (${fmtPct(pctGeral)}) está ${fmtPct(gap)} à frente do que já está pronto (${fmtPct(avancoFisico)}). Vale investigar onde está gastando mais do que entregando.`;
+    else if(gap < -10) leitura = `A obra está mais adiantada (${fmtPct(avancoFisico)}) do que o gasto (${fmtPct(pctGeral)}). Bom sinal, ou há gastos ainda não lançados.`;
+    else leitura = `Gasto e avanço estão andando juntos. É o cenário esperado.`;
+  }
+
+  const pendencias = [];
+  vencidos.forEach(p=> pendencias.push(`<div class="alert-row danger"><span>Pagamento vencido: ${esc(p.origem)} · ${fmtMoney(p.valor)}</span><button class="ghost" onclick="irPara('financeiro')">Ver</button></div>`));
+  medPend.forEach(m=>{
+    const c = state.contratos.find(c=>c.id===m.contratoId); const emp = c ? state.empreiteiros.find(e=>e.id===c.empreiteiroId) : null;
+    pendencias.push(`<div class="alert-row warn"><span>Medição a aprovar: ${emp?esc(emp.nome):'—'} · ${fmtPct(m.percentual)}</span><button class="ghost" onclick="irPara('contratos')">Ver</button></div>`);
+  });
+
+  return `
+    <h2 class="section-title">Painel da Obra</h2>
+    <p class="section-sub">Visão consolidada · ${esc(state.obra.nome)}</p>
+    ${intro('dashboard','Para que serve esta tela', `<p>É o resumo da obra em uma tela. Você não lança nada aqui: tudo é calculado a partir do que foi lançado nas outras abas.</p><p>Compare as duas réguas do topo. A da esquerda é o ${t('fisico')} (quanto está pronto). A da direita é o ${t('financeiro')} (quanto do orçamento já foi gasto). O ideal é que andem juntas.</p>`)}
+
+    ${state.orcamento.length===0 ? `<div class="empty" style="margin-bottom:18px;">Sua obra ainda não tem orçamento. Comece cadastrando os serviços no Orçamento ou importando uma planilha em Dados da obra e planilhas.<br><br><button class="primary" onclick="irPara('orcamento','form-orc')">Cadastrar orçamento</button></div>` : ''}
+
+    <div class="hero">
+      <div class="hero-top">
+        <h3>Avanço geral da obra</h3>
+        <span class="mono">${!temPrazo ? 'Informe o prazo em Dados da obra' : dias>=0 ? dias+' dias até o prazo de entrega' : Math.abs(dias)+' dias além do prazo de entrega'}</span>
+      </div>
+      <div class="hero-grid">
+        <div>
+          <div class="hero-figure">${fmtPct(avancoFisico)}</div>
+          ${rulerBar(100, avancoFisico, 'Quanto está pronto (físico)', '')}
+        </div>
+        <div>
+          <div class="hero-figure">${fmtPct(pctGeral)}</div>
+          ${rulerBar(totalPlanejado, totalRealizado, 'Quanto do orçamento foi gasto (financeiro)', '')}
+        </div>
+      </div>
+      ${leitura ? `<div class="hero-note">${leitura}</div>` : ''}
+    </div>
+
+    <div class="grid grid-4">
+      <div class="card metric-card">
+        <div class="metric-label">${t('planejado','Orçado total')}</div>
+        <div class="metric-value small">${fmtMoney(totalPlanejado)}</div>
+        <div class="metric-foot">${state.orcamento.length} serviços${state.obra.valorContratado ? ' · contrato '+fmtMoney(state.obra.valorContratado) : ''}</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">${t('realizado','Gasto até agora')}</div>
+        <div class="metric-value small ${statusClasse(pctGeral)}">${fmtMoney(totalRealizado)}</div>
+        <div class="metric-foot">${fmtPct(pctGeral)} do orçado</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">${t('estoque','Parado no estoque')}</div>
+        <div class="metric-value small">${fmtMoney(valorEstoque)}</div>
+        <div class="metric-foot">${state.materiais.filter(m=>m.saldo>0).length} materiais com saldo</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">${t('programado','A pagar')}</div>
+        <div class="metric-value small ${vencidos.length?'danger':''}">${fmtMoney(programados.reduce((s,p)=>s+p.valor,0))}</div>
+        <div class="metric-foot">${programados.length} pagamentos${vencidos.length? ' · '+vencidos.length+' vencido'+(vencidos.length>1?'s':''):''}</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Pronto × gasto, por etapa</h3>
+        ${etapas.length ? etapas.map(et=>{
+          const itens = state.orcamento.filter(i=>i.etapa===et);
+          const plan = itens.reduce((s,i)=>s+planejadoDoItem(i),0);
+          const real = itens.reduce((s,i)=>s+realizadoDoItem(i.id),0);
+          const fisico = state.etapaAvanco[et]||0;
+          return `<div style="margin-bottom:16px;">
+              <div style="font-weight:600;font-size:13.5px;margin-bottom:4px;">${esc(et)}</div>
+              ${rulerBar(100, fisico, 'Pronto', '')}
+              ${rulerBar(plan, real, 'Gasto', fmtMoney(real)+' de '+fmtMoney(plan))}
+            </div>`;
+        }).join('') : '<div class="empty">Sem etapas cadastradas.</div>'}
+      </div>
+
+      <div class="card">
+        <h3>O que precisa de atenção</h3>
+        ${pendencias.length ? pendencias.join('') : '<div class="empty">Nenhum pagamento vencido nem medição esperando aprovação.</div>'}
+        <div class="divider"></div>
+        <h3>Serviços perto de estourar</h3>
+        ${alertas.length ? alertas.map(a=>`<div class="alert-row ${a.pct>=100?'danger':'warn'}"><span>${esc(a.item.servico)}</span><span class="mono">${fmtPct(a.pct)}</span></div>`).join('') : '<div class="empty">Nenhum serviço passou de 75% do orçado.</div>'}
+        <div class="divider"></div>
+        <h3>Próximos pagamentos</h3>
+        ${proximos.length ? tbl(`<table><thead><tr><th>Data</th><th>Origem</th><th class="num">Valor</th></tr></thead><tbody>
+          ${proximos.map(p=>`<tr><td class="mono">${fmtDate(p.dataProgramada)} ${vencido(p)?pill('vencido','danger'):''}</td><td>${esc(p.origem)}</td><td class="num">${fmtMoney(p.valor)}</td></tr>`).join('')}
+        </tbody></table>`) : '<div class="empty">Nenhum pagamento programado.</div>'}
+      </div>
+    </div>
+
+  `;
+}
+
+/* ---------------------- ORÇAMENTO ---------------------- */
+const abertos = new Set();
+function toggleOrigem(id){ abertos.has(id) ? abertos.delete(id) : abertos.add(id); renderAll(); }
+
+function renderOrcamento(){
+  const etapas = [...new Set(state.orcamento.map(i=>i.etapa))];
+  return `
+    <h2 class="section-title">Orçamento da Obra</h2>
+    <p class="section-sub">Etapa → Serviço → Insumo</p>
+    ${intro('orcamento','Para que serve esta tela', `<p>Aqui você diz quanto pretende gastar. Cada linha é um ${t('servico','serviço')} da obra, dentro de uma ${t('etapa','etapa')}, com quantidade e preço unitário. O sistema multiplica e chega no valor ${t('planejado','planejado')}.</p><p>A coluna ${t('realizado','Realizado')} mostra quanto já foi gasto naquele serviço. Toque em "ver origem" para saber de onde veio cada real. No canto de cada etapa, informe o ${t('fisico','avanço físico')}: quanto daquela etapa já está pronto.</p>`,
+      'o realizado se atualiza quando você registra consumo de material, aprova uma medição ou lança um pagamento avulso ligado ao serviço.')}
+
+    ${etapas.length ? etapas.map(et=>{
+      const itens = state.orcamento.filter(i=>i.etapa===et);
+      const safe = esc(et);
+      return `
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-flex-head">
+            <h3>${safe}</h3>
+            <label class="link-tag">${t('fisico','pronto')}:
+              <input type="number" min="0" max="100" value="${state.etapaAvanco[et]||0}" data-etapa-avanco="${safe}" aria-label="Avanço físico de ${safe} em %"
+                style="width:48px;border:none;background:transparent;font-family:var(--font-mono);color:var(--blueprint);font-weight:600;font-size:12px;">%
+            </label>
+          </div>
+          ${tbl(`<table>
+            <thead><tr><th>Serviço</th><th>Insumo</th><th>Unid.</th><th class="num">Qtd.</th><th class="num">Preço unit.</th><th class="num">Planejado</th><th style="min-width:200px;">Realizado</th><th></th></tr></thead>
+            <tbody>
+              ${itens.map(i=>{
+                const plan = planejadoDoItem(i);
+                const orig = origensDoItem(i.id);
+                const real = orig.reduce((s,o)=>s+o.valor,0);
+                const aberto = abertos.has(i.id);
+                return `<tr>
+                  <td>${esc(i.servico)}</td>
+                  <td style="font-size:12px;color:var(--concrete);">${esc(i.insumo)||'—'}</td>
+                  <td class="mono">${esc(i.unidade)}</td>
+                  <td class="num">${fmtNum(i.qtd)}</td>
+                  <td class="num">${fmtMoney(i.precoUnit)}</td>
+                  <td class="num">${fmtMoney(plan)}</td>
+                  <td>${rulerBar(plan, real, '', fmtMoney(real))}
+                    ${orig.length ? `<button class="link" onclick="toggleOrigem(${i.id})">${aberto?'esconder origem':'ver origem ('+orig.length+')'}</button>` : '<span class="mono" style="font-size:11px;color:var(--concrete);">nada lançado ainda</span>'}</td>
+                  <td>${itemTemVinculo(i.id) ? '' : `<button class="link del" onclick="excluirItem(${i.id})">excluir</button>`}</td>
+                </tr>
+                ${aberto && orig.length ? `<tr class="origem-row"><td colspan="8"><div class="origem-list">${orig.map(o=>`<div><span class="mono">${fmtDate(o.data)}</span><span>${o.tipo}: ${o.desc}</span><b>${fmtMoney(o.valor)}</b></div>`).join('')}</div></td></tr>` : ''}`;
+              }).join('')}
+            </tbody>
+          </table>`)}
+        </div>`;
+    }).join('') : '<div class="empty">Nenhum serviço no orçamento ainda. Use o formulário abaixo ou importe uma planilha em Dados da obra e planilhas.</div>'}
+
+    <details class="formbox" id="form-orc" ${state.orcamento.length?'':'open'}>
+      <summary>Adicionar serviço ao orçamento</summary>
+      <p class="formhint">Exemplo: etapa "Cobertura", serviço "Telhado", insumo "Madeira e telha cerâmica", 180 m² a R$ 95,50.</p>
+      <div class="formgrid">
+        <div><label for="f-orc-etapa">Etapa</label><input id="f-orc-etapa" placeholder="Ex: Cobertura" list="etapas-list">
+          <datalist id="etapas-list">${etapas.map(e=>`<option value="${esc(e)}">`).join('')}</datalist>
+        </div>
+        <div><label for="f-orc-servico">Serviço</label><input id="f-orc-servico" placeholder="Ex: Telhado"></div>
+        <div><label for="f-orc-insumo">Insumo (opcional)</label><input id="f-orc-insumo" placeholder="Ex: Madeira e telha"></div>
+        <div><label for="f-orc-unidade">Unidade</label><input id="f-orc-unidade" placeholder="m², m³, un, ponto..."></div>
+        <div><label for="f-orc-qtd">Quantidade</label><input id="f-orc-qtd" type="number" step="0.01" inputmode="decimal"></div>
+        <div><label for="f-orc-preco">Preço unitário (R$)</label><input id="f-orc-preco" type="number" step="0.01" inputmode="decimal"></div>
+      </div>
+      <div class="form-actions"><button class="primary" onclick="handleAddOrcamento()">Adicionar ao orçamento</button></div>
+    </details>
+  `;
+}
+
+async function handleAddOrcamento(){
+  const etapa = val('f-orc-etapa').trim(), servico = val('f-orc-servico').trim(), insumo = val('f-orc-insumo').trim(), unidade = val('f-orc-unidade').trim();
+  const qtd = parseFloat(val('f-orc-qtd')), precoUnit = parseFloat(val('f-orc-preco'));
+  if(!etapa || !servico || !unidade){ erro('Preencha etapa, serviço e unidade.'); return; }
+  if(!(qtd>0) || !(precoUnit>0)){ erro('Quantidade e preço unitário precisam ser maiores que zero.'); return; }
+  const r = await api('POST', '/api/orcamento', {etapa, servico, insumo, unidade, qtd, precoUnit});
+  if(r) toast('ok', 'Serviço adicionado', `<div>${esc(servico)}: planejado ${fmtMoney(qtd*precoUnit)}. O total orçado da obra foi atualizado.</div>`);
+}
+
+function excluirItem(id){
+  const i = state.orcamento.find(x=>x.id===id); if(!i) return;
+  confirmar('Excluir serviço?', `"${i.servico}" sai do orçamento. Ele não tem nenhum gasto ligado, então nada mais muda.`, 'Excluir', async ()=>{
+    if(await api('DELETE', `/api/orcamento/${id}`)) toast('ok','Serviço excluído','');
+  }, true);
+}
+
+/* ---------------------- SUPRIMENTOS ---------------------- */
+function renderSuprimentos(){
+  const comSaldo = state.materiais.filter(m=>m.saldo>0);
+  const podeLancar = state.orcamento.length && comSaldo.length;
+  return `
+    <h2 class="section-title">Suprimentos</h2>
+    <p class="section-sub">Uso de material nos serviços · fornecedores</p>
+    ${intro('suprimentos','Para que serve esta tela', `<p>Quando alguém retira material do estoque para usar em um serviço, registre aqui o ${t('consumo','consumo')}. Ex.: "usei 120 m² de porcelanato no Revestimento cerâmico".</p><p>O valor é calculado pelo ${t('customedio','custo médio')} do material. Para ter o que consumir, antes o material precisa ter entrado pelo Estoque (nota fiscal).</p>`,
+      'o saldo do material diminui no Estoque e o valor é somado ao realizado do serviço escolhido no Orçamento.')}
+
+    <div class="grid grid-2">
+      <div class="card" id="sec-uso">
+        <h3>Material usado por serviço</h3>
+        ${state.pedidos.length ? tbl(`<table><thead><tr><th>Data</th><th>Serviço</th><th>Material</th><th class="num">Qtd. usada</th><th class="num">Valor</th></tr></thead><tbody>
+          ${state.pedidos.slice().reverse().map(p=>{
+            const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
+            const mat = state.materiais.find(m=>m.id===p.materialId);
+            return `<tr><td class="mono">${fmtDate(p.data)}</td><td>${item?esc(item.etapa+' · '+item.servico):'<span class="mono" style="color:var(--concrete)">serviço removido</span>'}</td><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(p.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(p.valor)}</td></tr>`;
+          }).join('')}
+        </tbody></table>`) : '<div class="empty">Nenhum consumo registrado ainda.</div>'}
+
+        <details class="formbox" id="form-uso" ${podeLancar && !state.pedidos.length ? 'open':''}>
+          <summary>Registrar uso de material</summary>
+          ${!state.orcamento.length ? `<p class="formhint">Primeiro cadastre pelo menos um serviço no Orçamento. <button class="link" onclick="irPara('orcamento')">Ir para Orçamento</button></p>`
+            : !comSaldo.length ? `<p class="formhint">Nenhum material tem saldo no estoque. Lance uma nota fiscal de entrada primeiro. <button class="link" onclick="irPara('estoque')">Ir para Estoque</button></p>`
+            : `<div class="formgrid">
+            <div><label for="f-cons-item">Em qual serviço foi usado</label><select id="f-cons-item">${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select></div>
+            <div><label for="f-cons-mat">Material</label><select id="f-cons-mat">${comSaldo.map(m=>`<option value="${m.id}">${esc(m.nome)} (tem ${fmtNum(m.saldo)} ${esc(m.unidade)})</option>`).join('')}</select></div>
+            <div><label for="f-cons-qtd">Quantidade usada</label><input id="f-cons-qtd" type="number" step="0.01" inputmode="decimal"></div>
+            <div><label for="f-cons-data">Data</label><input id="f-cons-data" type="date" value="${todayStr()}"></div>
+          </div>
+          <div class="form-actions"><button class="primary" onclick="handleConsumo()">Registrar uso</button></div>`}
+        </details>
+      </div>
+
+      <div class="card" id="sec-forn">
+        <h3>Fornecedores</h3>
+        ${state.fornecedores.length ? tbl(`<table><thead><tr><th>Nome</th><th>Contato</th></tr></thead><tbody>
+          ${state.fornecedores.map(f=>`<tr><td>${esc(f.nome)}</td><td class="mono">${esc(f.contato)}</td></tr>`).join('')}
+        </tbody></table>`) : '<div class="empty">Nenhum fornecedor cadastrado.</div>'}
+        <details class="formbox" id="form-forn">
+          <summary>Cadastrar fornecedor</summary>
+          <div class="formgrid">
+            <div><label for="f-forn-nome">Nome</label><input id="f-forn-nome"></div>
+            <div><label for="f-forn-contato">Telefone ou e-mail</label><input id="f-forn-contato"></div>
+          </div>
+          <div class="form-actions"><button class="primary" onclick="handleAddFornecedor()">Cadastrar</button></div>
+        </details>
+      </div>
+    </div>
+  `;
+}
+
+function handleConsumo(){
+  const orcamentoItemId = parseInt(val('f-cons-item')), materialId = parseInt(val('f-cons-mat'));
+  const qtd = parseFloat(val('f-cons-qtd')), data = val('f-cons-data');
+  if(!orcamentoItemId || !materialId || !data){ erro('Escolha o serviço, o material e a data.'); return; }
+  if(!(qtd>0)){ erro('Informe a quantidade usada (maior que zero).'); return; }
+  const mat = state.materiais.find(m=>m.id===materialId);
+  const item = state.orcamento.find(i=>i.id===orcamentoItemId);
+  const executar = async (parcial)=>{
+    const r = await api('POST', '/api/consumos', {orcamentoItemId, materialId, qtd, data, aceitarParcial: !!parcial});
+    if(!r) return;
+    const m2 = state.materiais.find(m=>m.id===materialId);
+    toast('ok','Uso registrado', `<ul><li>Estoque de ${esc(m2.nome)}: agora ${fmtNum(m2.saldo)} ${esc(m2.unidade)}</li><li>${fmtMoney(r.valor)} somados ao realizado de "${esc(item.servico)}"</li></ul>`);
+  };
+  if(mat.saldo < qtd){
+    confirmar('Estoque insuficiente', `Você pediu ${fmtNum(qtd)} ${mat.unidade}, mas o estoque tem só ${fmtNum(mat.saldo)} ${mat.unidade}. Se a quantidade está certa, falta lançar alguma nota fiscal. Quer registrar só o que há no estoque?`, `Registrar ${fmtNum(mat.saldo)} ${mat.unidade}`, ()=>executar(true));
+    return;
+  }
+  executar(false);
+}
+
+async function handleAddFornecedor(){
+  const nome = val('f-forn-nome').trim(), contato = val('f-forn-contato').trim();
+  if(!nome){ erro('Informe o nome do fornecedor.'); return; }
+  const r = await api('POST', '/api/fornecedores', {nome, contato});
+  if(!r) return;
+  if(!nfDraft.fornecedorId) nfDraft.fornecedorId = r.id;
+  toast('ok','Fornecedor cadastrado', `<div>${esc(nome)} já aparece na hora de lançar notas fiscais.</div>`);
+}
+
+/* ---------------------- ESTOQUE ---------------------- */
+const novoNfDraft = () => ({numero:'', fornecedorId: state.fornecedores[0] ? state.fornecedores[0].id : null, data: todayStr(), itens:[]});
+let nfDraft;
+
+function renderEstoque(){
+  const opcoesMateriais = state.materiais.map(m=>`<option value="${m.id}">${esc(m.nome)} (${esc(m.unidade)})</option>`).join('');
+  const totalDraft = nfDraft.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
+  return `
+    <h2 class="section-title">Estoque de Materiais</h2>
+    <p class="section-sub">Entrada por nota fiscal · saída pelo uso nos serviços</p>
+    ${intro('estoque','Para que serve esta tela', `<p>Quando um material chega na obra, lance a ${t('nf','nota fiscal')} aqui. Uma nota pode ter vários itens. O material passa a ter ${t('estoque','saldo')} e um ${t('customedio','custo médio')}.</p><p>Material no estoque ainda não é gasto de nenhum serviço. Ele só vira gasto quando alguém registra o uso em Suprimentos.</p>`,
+      'ao salvar a nota, o saldo sobe, o custo médio é recalculado e um pagamento ao fornecedor é programado no Financeiro.')}
+
+    <div class="card" style="margin-bottom:18px;" id="sec-saldo">
+      <h3>Saldo atual por material</h3>
+      ${state.materiais.length ? tbl(`<table><thead><tr><th>Material</th><th>Unid.</th><th class="num">Saldo</th><th class="num">Custo médio</th><th class="num">Valor parado</th></tr></thead><tbody>
+        ${state.materiais.map(m=>`<tr>
+          <td>${esc(m.nome)}</td><td class="mono">${esc(m.unidade)}</td>
+          <td class="num">${m.saldo>0 ? fmtNum(m.saldo) : pill('sem saldo','neutral')}</td>
+          <td class="num">${m.custoMedio ? fmtMoney(m.custoMedio) : '—'}</td>
+          <td class="num">${fmtMoney(m.saldo*m.custoMedio)}</td>
+        </tr>`).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhum material cadastrado. Cadastre abaixo antes de lançar notas.</div>'}
+      <details class="formbox" id="form-mat" ${state.materiais.length?'':'open'}>
+        <summary>Cadastrar novo material</summary>
+        <div class="formgrid">
+          <div><label for="f-mat-nome">Nome</label><input id="f-mat-nome" placeholder="Ex: Tinta acrílica 18L"></div>
+          <div><label for="f-mat-unid">Unidade</label><input id="f-mat-unid" placeholder="un, sc, kg, m², lata..."></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddMaterial()">Cadastrar material</button></div>
+      </details>
+    </div>
+
+    <div class="card" id="sec-nfs">
+      <h3>Notas fiscais de entrada</h3>
+      <details class="formbox" id="nf-formbox" style="margin:0 0 16px;" ${nfDraft.itens.length || !state.notasFiscais.length ? 'open' : ''}>
+        <summary>Lançar nota fiscal que chegou</summary>
+        ${!state.fornecedores.length || !state.materiais.length ? `<p class="formhint">Para lançar uma nota, cadastre antes ${!state.fornecedores.length?'um fornecedor (em Suprimentos)':''}${!state.fornecedores.length && !state.materiais.length?' e ':''}${!state.materiais.length?'um material (acima)':''}.</p>` : `
+        <p class="formhint">1. Preencha o cabeçalho da nota. 2. Adicione cada item com "+ item". 3. Salve.</p>
+        <div class="formgrid">
+          <div><label for="f-nf-numero">Número da nota</label><input id="f-nf-numero" placeholder="Ex: NF-4587" value="${esc(nfDraft.numero)}" oninput="nfDraft.numero=this.value"></div>
+          <div><label for="f-nf-forn">Fornecedor</label><select id="f-nf-forn" onchange="nfDraft.fornecedorId=parseInt(this.value)">${state.fornecedores.map(f=>`<option value="${f.id}" ${nfDraft.fornecedorId===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></div>
+          <div><label for="f-nf-data">Data de vencimento do pagamento</label><input id="f-nf-data" type="date" value="${esc(nfDraft.data)}" onchange="nfDraft.data=this.value"></div>
+        </div>
+        <div class="formgrid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));align-items:end;">
+          <div><label for="f-nf-item-mat">Material</label><select id="f-nf-item-mat">${opcoesMateriais}</select></div>
+          <div><label for="f-nf-item-qtd">Quantidade</label><input id="f-nf-item-qtd" type="number" step="0.01" inputmode="decimal"></div>
+          <div><label for="f-nf-item-valor">Valor unitário (R$)</label><input id="f-nf-item-valor" type="number" step="0.01" inputmode="decimal"></div>
+          <div><button class="ghost" style="width:100%;padding:9px 12px;" onclick="handleAddItemNFDraft()">+ item</button></div>
+        </div>
+        ${nfDraft.itens.length ? `<div style="padding:0 14px;">${tbl(`<table class="nf-draft-table"><thead><tr><th>Material</th><th class="num">Qtd.</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead><tbody>
+          ${nfDraft.itens.map((it,idx)=>{ const mat = state.materiais.find(m=>m.id===it.materialId);
+            return `<tr><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(it.qtd)}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td><td class="num"><button class="link del" onclick="handleRemoveItemNFDraft(${idx})">remover</button></td></tr>`; }).join('')}
+        </tbody></table>`)}</div>
+        <div class="form-actions"><button class="primary" onclick="handleSalvarNFDraft()">Salvar nota (${nfDraft.itens.length} ${nfDraft.itens.length===1?'item':'itens'} · ${fmtMoney(totalDraft)})</button></div>
+        ` : '<p class="formhint">Nenhum item adicionado ainda.</p>'}`}
+      </details>
+
+      ${state.notasFiscais.length ? state.notasFiscais.slice().reverse().map(nf=>{
+        const forn = state.fornecedores.find(f=>f.id===nf.fornecedorId);
+        const total = nf.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
+        return `<div style="border:1px solid var(--line);border-radius:4px;padding:10px 14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--concrete);margin-bottom:6px;">
+            <span><b style="color:var(--ink);">${esc(nf.numero)}</b> · ${forn?esc(forn.nome):'—'} · ${fmtDate(nf.data)}</span>
+            <span>${fmtMoney(total)}</span>
+          </div>
+          ${tbl(`<table><tbody>
+          ${nf.itens.map(it=>{ const mat = state.materiais.find(m=>m.id===it.materialId); return `<tr><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(it.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td></tr>`; }).join('')}
+          </tbody></table>`)}
+        </div>`;
+      }).join('') : '<div class="empty">Nenhuma nota fiscal lançada ainda.</div>'}
+    </div>
+  `;
+}
+
+async function handleAddMaterial(){
+  const nome = val('f-mat-nome').trim(), unidade = val('f-mat-unid').trim();
+  if(!nome || !unidade){ erro('Informe o nome e a unidade do material.'); return; }
+  if(await api('POST', '/api/materiais', {nome, unidade})) toast('ok','Material cadastrado', `<div>${esc(nome)} começa com saldo zero. Lance uma nota fiscal para dar entrada.</div>`);
+}
+
+function handleAddItemNFDraft(){
+  const materialId = parseInt(val('f-nf-item-mat')), qtd = parseFloat(val('f-nf-item-qtd')), valorUnit = parseFloat(val('f-nf-item-valor'));
+  if(!materialId){ erro('Escolha o material.'); return; }
+  if(!(qtd>0) || !(valorUnit>0)){ erro('Quantidade e valor unitário precisam ser maiores que zero.'); return; }
+  nfDraft.numero = val('f-nf-numero'); nfDraft.data = val('f-nf-data') || nfDraft.data;
+  nfDraft.fornecedorId = parseInt(val('f-nf-forn')) || nfDraft.fornecedorId;
+  nfDraft.itens.push({materialId, qtd, valorUnit});
+  renderAll();
+  const q = document.getElementById('f-nf-item-qtd'); if(q) q.focus();
+}
+function handleRemoveItemNFDraft(idx){ nfDraft.itens.splice(idx,1); renderAll(); }
+
+async function handleSalvarNFDraft(){
+  nfDraft.numero = val('f-nf-numero'); nfDraft.data = val('f-nf-data') || nfDraft.data;
+  nfDraft.fornecedorId = parseInt(val('f-nf-forn')) || nfDraft.fornecedorId;
+  if(!nfDraft.numero.trim()){ erro('Informe o número da nota fiscal.'); return; }
+  if(!nfDraft.fornecedorId){ erro('Escolha o fornecedor.'); return; }
+  if(!nfDraft.itens.length){ erro('Adicione pelo menos um item com "+ item".'); return; }
+  const forn = state.fornecedores.find(f=>f.id===nfDraft.fornecedorId);
+  const n = nfDraft.itens.length;
+  const r = await api('POST', '/api/notas', {fornecedorId: nfDraft.fornecedorId, numero: nfDraft.numero.trim(), data: nfDraft.data, itens: nfDraft.itens});
+  if(!r) return;
+  nfDraft = novoNfDraft();
+  renderAll();
+  toast('ok', 'Nota fiscal lançada', `<ul><li>${n} ${n===1?'material entrou':'materiais entraram'} no estoque</li><li>Pagamento de ${fmtMoney(r.total)} a ${forn?esc(forn.nome):'fornecedor'} programado no Financeiro</li><li>Para virar gasto de um serviço, registre o uso em Suprimentos</li></ul>`);
+}
+
+/* ---------------------- CONTRATOS & MEDIÇÕES ---------------------- */
+function renderContratos(){
+  const opcoesContratos = state.contratos.map(c=>{
+    const emp = state.empreiteiros.find(e=>e.id===c.empreiteiroId);
+    const item = state.orcamento.find(i=>i.id===c.orcamentoItemId);
+    return `<option value="${c.id}">${emp?esc(emp.nome):'—'} · ${item?esc(item.servico):'—'} (falta ${fmtPct(100-pctMedido(c.id))})</option>`;
+  }).join('');
+  return `
+    <h2 class="section-title">Contratos & Medições</h2>
+    <p class="section-sub">Mão de obra terceirizada: contratar → medir → aprovar → pagar</p>
+    ${intro('contratos','Para que serve esta tela', `<p>Cadastre o ${t('empreiteiro','empreiteiro')} e faça um ${t('contrato','contrato')} com ele, ligado a um serviço do orçamento.</p><p>De tempos em tempos, registre uma ${t('medicao','medição')}: quanto (%) ele executou no período. Depois de conferir na obra, ${t('aprovar','aprove')}. A soma das medições de um contrato não pode passar de 100%.</p>`,
+      'ao aprovar uma medição, o valor medido vira realizado do serviço no Orçamento e um pagamento ao empreiteiro é programado no Financeiro.')}
+
+    <div class="card" style="margin-bottom:18px;" id="sec-med">
+      <h3>Medições</h3>
+      ${state.medicoes.length ? tbl(`<table><thead><tr><th>Data</th><th>Empreiteiro</th><th>Serviço</th><th class="num">%</th><th class="num">Valor</th><th>Situação</th><th></th></tr></thead><tbody>
+        ${state.medicoes.slice().reverse().map(m=>{
+          const c = state.contratos.find(c=>c.id===m.contratoId);
+          const emp = c ? state.empreiteiros.find(e=>e.id===c.empreiteiroId) : null;
+          const item = c ? state.orcamento.find(i=>i.id===c.orcamentoItemId) : null;
+          return `<tr>
+            <td class="mono">${fmtDate(m.data)}</td>
+            <td>${emp?esc(emp.nome):'—'}</td>
+            <td>${item?esc(item.servico):'—'}</td>
+            <td class="num">${fmtPct(m.percentual)}</td>
+            <td class="num">${fmtMoney(m.valor)}</td>
+            <td>${m.status==='aprovada'?pill('Aprovada','ok'):pill('Esperando aprovação','warn')}</td>
+            <td style="white-space:nowrap;">${m.status==='pendente' ? `<button class="primary" style="padding:6px 12px;font-size:12px;" onclick="handleAprovarMedicao(${m.id})">Aprovar</button> <button class="link del" onclick="excluirMedicao(${m.id})">excluir</button>` : ''}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhuma medição registrada.</div>'}
+
+      <details class="formbox" id="form-med">
+        <summary>Registrar medição</summary>
+        ${state.contratos.length ? `
+        <p class="formhint">Ex.: o empreiteiro fez mais 25% da alvenaria este mês. Escolha o contrato e informe 25.</p>
+        <div class="formgrid">
+          <div><label for="f-med-contrato">Contrato</label><select id="f-med-contrato">${opcoesContratos}</select></div>
+          <div><label for="f-med-data">Data</label><input id="f-med-data" type="date" value="${todayStr()}"></div>
+          <div><label for="f-med-pct">% executado no período</label><input id="f-med-pct" type="number" step="0.1" min="0" max="100" inputmode="decimal"></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddMedicao()">Registrar medição</button></div>` : `<p class="formhint">Cadastre um contrato primeiro (abaixo).</p>`}
+      </details>
+    </div>
+
+    <div class="card" id="sec-ctr">
+      <h3>Contratos</h3>
+      ${state.contratos.length ? tbl(`<table><thead><tr><th>Empreiteiro</th><th>Serviço</th><th class="num">Contratado</th><th style="min-width:170px;">Medido (aprovado)</th><th class="num">Falta medir</th><th>Pagamento</th></tr></thead><tbody>
+        ${state.contratos.map(c=>{
+          const emp = state.empreiteiros.find(e=>e.id===c.empreiteiroId);
+          const item = state.orcamento.find(i=>i.id===c.orcamentoItemId);
+          const medido = state.medicoes.filter(m=>m.contratoId===c.id && m.status==='aprovada').reduce((s,m)=>s+m.valor,0);
+          return `<tr><td>${emp?esc(emp.nome):'—'}</td><td>${item?esc(item.servico):'—'}</td><td class="num">${fmtMoney(c.valorContratado)}</td><td>${rulerBar(c.valorContratado, medido, '', fmtMoney(medido))}</td><td class="num">${fmtMoney(c.valorContratado-medido)}</td><td class="mono" style="font-size:12px;">${esc(c.formaPagamento)}</td></tr>`;
+        }).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhum contrato cadastrado.</div>'}
+
+      <details class="formbox" id="form-ctr">
+        <summary>Novo contrato</summary>
+        ${!state.empreiteiros.length || !state.orcamento.length ? `<p class="formhint">Para criar um contrato, cadastre antes ${!state.empreiteiros.length?'um empreiteiro (abaixo)':''}${!state.empreiteiros.length && !state.orcamento.length?' e ':''}${!state.orcamento.length?'um serviço no Orçamento':''}.</p>` : `
+        <div class="formgrid">
+          <div><label for="f-ctr-emp">Empreiteiro</label><select id="f-ctr-emp">${state.empreiteiros.map(e=>`<option value="${e.id}">${esc(e.nome)}</option>`).join('')}</select></div>
+          <div><label for="f-ctr-item">Serviço do orçamento</label><select id="f-ctr-item">${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select></div>
+          <div><label for="f-ctr-valor">Valor total do contrato (R$)</label><input id="f-ctr-valor" type="number" step="0.01" inputmode="decimal"></div>
+          <div><label for="f-ctr-forma">Como vai pagar</label><input id="f-ctr-forma" placeholder="Ex: Por medição mensal"></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddContrato()">Cadastrar contrato</button></div>`}
+      </details>
+
+      <details class="formbox" id="form-emp">
+        <summary>Empreiteiros cadastrados (${state.empreiteiros.length}) · cadastrar novo</summary>
+        ${state.empreiteiros.length ? `<div style="padding:0 14px 8px;">${tbl(`<table><tbody>${state.empreiteiros.map(e=>`<tr><td>${esc(e.nome)}</td><td style="color:var(--concrete);">${esc(e.especialidade)}</td><td class="mono">${esc(e.contato)}</td></tr>`).join('')}</tbody></table>`)}</div>` : ''}
+        <div class="formgrid">
+          <div><label for="f-emp-nome">Nome</label><input id="f-emp-nome"></div>
+          <div><label for="f-emp-contato">Telefone</label><input id="f-emp-contato"></div>
+          <div><label for="f-emp-esp">Especialidade</label><input id="f-emp-esp" placeholder="Ex: Elétrica, Alvenaria..."></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddEmpreiteiro()">Cadastrar empreiteiro</button></div>
+      </details>
+    </div>
+  `;
+}
+
+async function handleAddEmpreiteiro(){
+  const nome = val('f-emp-nome').trim(), contato = val('f-emp-contato').trim(), especialidade = val('f-emp-esp').trim();
+  if(!nome){ erro('Informe o nome do empreiteiro.'); return; }
+  if(await api('POST', '/api/empreiteiros', {nome, contato, especialidade})) toast('ok','Empreiteiro cadastrado', `<div>Agora crie um contrato para ${esc(nome)}.</div>`);
+}
+
+async function handleAddContrato(){
+  const empreiteiroId = parseInt(val('f-ctr-emp')), orcamentoItemId = parseInt(val('f-ctr-item'));
+  const valorContratado = parseFloat(val('f-ctr-valor')), formaPagamento = val('f-ctr-forma').trim() || 'A combinar';
+  if(!empreiteiroId || !orcamentoItemId){ erro('Escolha o empreiteiro e o serviço.'); return; }
+  if(!(valorContratado>0)){ erro('Informe o valor do contrato.'); return; }
+  const item = state.orcamento.find(i=>i.id===orcamentoItemId);
+  const plan = planejadoDoItem(item);
+  if(!(await api('POST', '/api/contratos', {empreiteiroId, orcamentoItemId, valorContratado, formaPagamento}))) return;
+  toast(valorContratado > plan ? 'info' : 'ok', 'Contrato cadastrado',
+    valorContratado > plan ? `<div>Atenção: o contrato (${fmtMoney(valorContratado)}) é maior que todo o orçado para "${esc(item.servico)}" (${fmtMoney(plan)}). Esse serviço vai estourar.</div>` : `<div>Agora registre medições conforme o serviço avança.</div>`);
+}
+
+async function handleAddMedicao(){
+  const contratoId = parseInt(val('f-med-contrato')), data = val('f-med-data'), percentual = parseFloat(val('f-med-pct'));
+  if(!contratoId || !data){ erro('Escolha o contrato e a data.'); return; }
+  if(!(percentual>0)){ erro('Informe o % executado no período (maior que zero).'); return; }
+  const ja = pctMedido(contratoId);
+  if(ja + percentual > 100.0001){ erro(`Esse contrato já tem ${fmtPct(ja)} medido. O máximo que dá para medir agora é ${fmtPct(100-ja)}.`); return; }
+  const r = await api('POST', '/api/medicoes', {contratoId, data, percentual});
+  if(r) toast('ok','Medição registrada', `<div>${fmtPct(percentual)} = ${fmtMoney(r.valor)}. Ela fica esperando aprovação. Só depois de aprovada vira gasto e gera pagamento.</div>`);
+}
+
+function handleAprovarMedicao(id){
+  const m = state.medicoes.find(x=>x.id===id);
+  const c = state.contratos.find(x=>x.id===m.contratoId);
+  const item = c ? state.orcamento.find(i=>i.id===c.orcamentoItemId) : null;
+  confirmar('Aprovar medição?', `Confirme que ${fmtPct(m.percentual)} do serviço foi mesmo executado. Isso lança ${fmtMoney(m.valor)} como gasto${item?' de "'+item.servico+'"':''} e programa o pagamento ao empreiteiro.`, 'Aprovar', async ()=>{
+    if(await api('POST', `/api/medicoes/${id}/aprovar`)) toast('ok','Medição aprovada', `<ul><li>${fmtMoney(m.valor)} somados ao realizado${item?' de "'+esc(item.servico)+'"':''}</li><li>Pagamento programado no Financeiro</li></ul>`);
+  });
+}
+
+function excluirMedicao(id){
+  confirmar('Excluir medição?', 'A medição ainda não foi aprovada, então não gerou gasto nem pagamento.', 'Excluir', async ()=>{
+    if(await api('DELETE', `/api/medicoes/${id}`)) toast('ok','Medição excluída','');
+  }, true);
+}
+
+/* ---------------------- FINANCEIRO ---------------------- */
+function renderFinanceiro(){
+  const total = state.pagamentos.reduce((s,p)=>s+p.valor,0);
+  const pago = state.pagamentos.filter(p=>p.status==='pago').reduce((s,p)=>s+p.valor,0);
+  const venc = state.pagamentos.filter(vencido);
+  const ordenados = state.pagamentos.slice().sort((a,b)=>{
+    if(a.status!==b.status) return a.status==='programado' ? -1 : 1;
+    return a.status==='programado' ? a.dataProgramada.localeCompare(b.dataProgramada) : b.dataProgramada.localeCompare(a.dataProgramada);
+  });
+  return `
+    <h2 class="section-title">Financeiro</h2>
+    <p class="section-sub">Contas a pagar da obra: material e mão de obra</p>
+    ${intro('financeiro','Para que serve esta tela', `<p>É a lista de tudo que a obra precisa pagar. Quase tudo aparece aqui sozinho: as notas fiscais geram pagamentos de material e as medições aprovadas geram pagamentos de mão de obra.</p><p>Quando o dinheiro sair, toque em "Marcar como pago". Despesas que não vêm de nota nem de medição (taxas, aluguel de equipamento) entram como pagamento avulso. Se você ligar um avulso a um serviço, ele conta como gasto daquele serviço.</p>`)}
+
+    <div class="grid grid-3" style="margin-bottom:18px;">
+      <div class="card metric-card"><div class="metric-label">Total lançado</div><div class="metric-value small">${fmtMoney(total)}</div></div>
+      <div class="card metric-card"><div class="metric-label">${t('pago','Já pago')}</div><div class="metric-value small ok">${fmtMoney(pago)}</div></div>
+      <div class="card metric-card"><div class="metric-label">${t('programado','Falta pagar')}</div><div class="metric-value small ${venc.length?'danger':'warn'}">${fmtMoney(total-pago)}</div><div class="metric-foot">${venc.length ? venc.length+' vencido'+(venc.length>1?'s':'')+' · '+fmtMoney(venc.reduce((s,p)=>s+p.valor,0)) : 'nada vencido'}</div></div>
+    </div>
+
+    <div class="card" id="sec-pag">
+      <h3>Pagamentos</h3>
+      ${state.pagamentos.length ? tbl(`<table><thead><tr><th>Vencimento</th><th>Tipo</th><th>Origem</th><th>Serviço</th><th class="num">Valor</th><th>Situação</th><th></th></tr></thead><tbody>
+        ${ordenados.map(p=>{
+          const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
+          const tipo = p.tipo==='material' ? 'Material' : p.tipo==='mao-de-obra' ? 'Mão de obra' : 'Avulso';
+          return `<tr>
+            <td class="mono">${fmtDate(p.dataProgramada)}</td>
+            <td>${pill(tipo,'neutral')}</td>
+            <td>${esc(p.origem)}</td>
+            <td>${item?esc(item.servico):'<span class="mono" style="color:var(--concrete);font-size:11px;">'+(p.tipo==='material'?'vai p/ estoque':'geral')+'</span>'}</td>
+            <td class="num">${fmtMoney(p.valor)}</td>
+            <td>${p.status==='pago' ? pill('Pago em '+fmtDate(p.dataPagamento),'ok') : vencido(p) ? pill('Vencido','danger') : pill('A pagar','warn')}</td>
+            <td style="white-space:nowrap;">${p.status==='programado' ? `<button class="ghost" onclick="handleMarcarPago(${p.id})">Marcar como pago</button>${p.tipo==='avulso' ? ` <button class="link del" onclick="excluirPagamento(${p.id})">excluir</button>` : ''}` : ''}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhum pagamento lançado ainda. Eles aparecem quando você lança notas fiscais ou aprova medições.</div>'}
+
+      <details class="formbox" id="form-pag">
+        <summary>Lançar pagamento avulso</summary>
+        <div class="formgrid">
+          <div><label for="f-pag-desc">Descrição</label><input id="f-pag-desc" placeholder="Ex: Taxa de alvará"></div>
+          <div><label for="f-pag-item">Ligar a um serviço (opcional)</label>
+            <select id="f-pag-item"><option value="">Não ligar (despesa geral)</option>${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select>
+          </div>
+          <div><label for="f-pag-valor">Valor (R$)</label><input id="f-pag-valor" type="number" step="0.01" inputmode="decimal"></div>
+          <div><label for="f-pag-data">Vencimento</label><input id="f-pag-data" type="date" value="${todayStr()}"></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddPagamentoAvulso()">Lançar pagamento</button></div>
+      </details>
+    </div>
+  `;
+}
+
+async function handleMarcarPago(id){
+  const p = state.pagamentos.find(x=>x.id===id);
+  if(await api('POST', `/api/pagamentos/${id}/pagar`)) toast('ok','Pagamento confirmado', `<div>${esc(p.origem)}: ${fmtMoney(p.valor)} saiu do "falta pagar".</div>`);
+}
+
+function excluirPagamento(id){
+  confirmar('Excluir pagamento avulso?', 'Ele sai da lista de contas a pagar e, se estava ligado a um serviço, deixa de contar como gasto dele.', 'Excluir', async ()=>{
+    if(await api('DELETE', `/api/pagamentos/${id}`)) toast('ok','Pagamento excluído','');
+  }, true);
+}
+
+async function handleAddPagamentoAvulso(){
+  const desc = val('f-pag-desc').trim();
+  const orcamentoItemId = val('f-pag-item') ? parseInt(val('f-pag-item')) : null;
+  const valor = parseFloat(val('f-pag-valor')), data = val('f-pag-data');
+  if(!desc || !data){ erro('Preencha a descrição e o vencimento.'); return; }
+  if(!(valor>0)){ erro('Informe o valor (maior que zero).'); return; }
+  const item = state.orcamento.find(i=>i.id===orcamentoItemId);
+  if(!(await api('POST', '/api/pagamentos', {descricao: desc, orcamentoItemId, valor, data}))) return;
+  toast('ok','Pagamento lançado', item ? `<div>${fmtMoney(valor)} também somados ao realizado de "${esc(item.servico)}".</div>` : `<div>Despesa geral: entra no caixa, mas não conta como gasto de nenhum serviço.</div>`);
+}
+
+/* ---------------------- Excel: exportar / importar ---------------------- */
+async function salvarArquivo(wb, nome){
+  let downloads = null;
+  try{ downloads = window.claude && window.claude.use ? await window.claude.use('downloads') : null; }catch(e){}
+  if(downloads){
+    try{
+      const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      await downloads.save({filename:nome, data:buf});
+      toast('ok','Arquivo pronto', `<div>${esc(nome)}</div>`);
+    }catch(err){
+      if(err && err.code==='declined') return;
+      toast('err','Não foi possível baixar', `<div>${esc(err && err.message || 'O download foi recusado nesta visualização.')}</div>`);
+    }
+    return;
+  }
+  try{ XLSX.writeFile(wb, nome); }
+  catch(e){ toast('err','Download indisponível aqui', '<div>Abra a página no navegador, fora da pré-visualização, para baixar arquivos.</div>'); }
+}
+
+function baixarModeloOrcamento(){
+  const headers = ['Etapa','Servico','Insumo','Unidade','Quantidade','PrecoUnitario'];
+  const ws = XLSX.utils.aoa_to_sheet([headers, ['Cobertura','Estrutura de telhado','Madeira e telha cerâmica','m²',180,95.5], ['Cobertura','Calhas e rufos','Chapa galvanizada','m',42,68]]);
+  ws['!cols'] = [{wch:14},{wch:28},{wch:28},{wch:10},{wch:12},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Orcamento');
+  salvarArquivo(wb, 'modelo-orcamento-obrasimples.xlsx');
+}
+
+function exportarDadosCompletos(){
+  const wb = XLSX.utils.book_new();
+  const add = (rows, nome, headers) => XLSX.utils.book_append_sheet(wb, rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([headers]), nome);
+  add([{Nome:state.obra.nome, Cliente:state.obra.cliente, Prazo:state.obra.prazo, ValorContratado:state.obra.valorContratado}], 'Obra');
+  add(state.orcamento.map(i=>({ID:i.id, Etapa:i.etapa, Servico:i.servico, Insumo:i.insumo||'', Unidade:i.unidade, Quantidade:i.qtd, PrecoUnitario:i.precoUnit})), 'Orcamento', ['ID','Etapa','Servico','Insumo','Unidade','Quantidade','PrecoUnitario']);
+  add(Object.entries(state.etapaAvanco).map(([Etapa,AvancoFisicoPct])=>({Etapa, AvancoFisicoPct})), 'EtapaAvanco', ['Etapa','AvancoFisicoPct']);
+  add(state.fornecedores.map(f=>({ID:f.id, Nome:f.nome, Contato:f.contato})), 'Fornecedores', ['ID','Nome','Contato']);
+  add(state.materiais.map(m=>({ID:m.id, Nome:m.nome, Unidade:m.unidade, Saldo:m.saldo, CustoMedio:m.custoMedio})), 'Materiais', ['ID','Nome','Unidade','Saldo','CustoMedio']);
+  const nfRows = []; state.notasFiscais.forEach(nf=>nf.itens.forEach(it=>nfRows.push({ID:nf.id, Numero:nf.numero, FornecedorID:nf.fornecedorId, Data:nf.data, MaterialID:it.materialId, Quantidade:it.qtd, ValorUnitario:it.valorUnit})));
+  add(nfRows, 'NotasFiscais', ['ID','Numero','FornecedorID','Data','MaterialID','Quantidade','ValorUnitario']);
+  add(state.pedidos.map(p=>({ID:p.id, OrcamentoItemID:p.orcamentoItemId, MaterialID:p.materialId, Quantidade:p.qtd, QuantidadeSolicitada:p.qtdSolicitada, Valor:p.valor, Data:p.data})), 'ConsumoMaterial', ['ID','OrcamentoItemID','MaterialID','Quantidade','QuantidadeSolicitada','Valor','Data']);
+  add(state.empreiteiros.map(e=>({ID:e.id, Nome:e.nome, Contato:e.contato, Especialidade:e.especialidade})), 'Empreiteiros', ['ID','Nome','Contato','Especialidade']);
+  add(state.contratos.map(c=>({ID:c.id, EmpreiteiroID:c.empreiteiroId, OrcamentoItemID:c.orcamentoItemId, ValorContratado:c.valorContratado, FormaPagamento:c.formaPagamento})), 'Contratos', ['ID','EmpreiteiroID','OrcamentoItemID','ValorContratado','FormaPagamento']);
+  add(state.medicoes.map(m=>({ID:m.id, ContratoID:m.contratoId, Data:m.data, PercentualExecutado:m.percentual, Valor:m.valor, Status:m.status})), 'Medicoes', ['ID','ContratoID','Data','PercentualExecutado','Valor','Status']);
+  add(state.pagamentos.map(p=>({ID:p.id, Tipo:p.tipo, Origem:p.origem, OrcamentoItemID:p.orcamentoItemId||'', Valor:p.valor, DataProgramada:p.dataProgramada, DataPagamento:p.dataPagamento||'', Status:p.status, MedicaoID:p.medicaoId||''})), 'Pagamentos', ['ID','Tipo','Origem','OrcamentoItemID','Valor','DataProgramada','DataPagamento','Status','MedicaoID']);
+  const base = (state.obra.nome||'obra').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  salvarArquivo(wb, (base||'obra') + '-dados-' + todayStr() + '.xlsx');
+}
+
+/* Cabeçalhos aceitos com ou sem acento/espaço: "Serviço", "Preço Unitário", "PrecoUnitario"... */
+const normKey = k => String(k).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function linhaNormalizada(r){ const o = {}; Object.keys(r).forEach(k=>{ o[normKey(k)] = r[k]; }); return o; }
+const pick = (r, ...keys) => { for(const k of keys){ if(r[k]!==undefined && r[k]!=='') return r[k]; } return ''; };
+/* Datas: aceita AAAA-MM-DD, DD/MM/AAAA e o número de série que o Excel grava */
+function normData(v, padrao){
+  if(v===undefined || v===null || v==='') return padrao;
+  if(typeof v==='number'){ const d = new Date(Math.round((v-25569)*86400000)); return d.toISOString().slice(0,10); }
+  const s = String(v).trim();
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(br) return br[3]+'-'+br[2].padStart(2,'0')+'-'+br[1].padStart(2,'0');
+  return s.slice(0,10);
+}
+const num = v => { if(typeof v==='number') return v; const s = String(v||'').trim(); if(!s) return 0; const n = parseFloat(s.includes(',') ? s.replace(/\./g,'').replace(',','.') : s); return isNaN(n)?0:n; };
+const idOr = (v, novo) => { const n = parseInt(v); return isNaN(n) ? novo() : n; };
+const maxId = arr => arr.length ? Math.max(...arr.map(x=>parseInt(x.id)||0)) : 0;
+
+function handleImportarPlanilha(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let novo, abas = [];
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const nomes = {}; wb.SheetNames.forEach(n=>{ nomes[normKey(n)] = n; });
+      const sheet = name => { const real = nomes[normKey(name)]; if(!real) return null; abas.push(real); return XLSX.utils.sheet_to_json(wb.Sheets[real], {defval:''}).map(linhaNormalizada); };
+      novo = JSON.parse(JSON.stringify(state));
+      const prevState = state; state = novo; /* uid() usa o novo estado */
+
+      const obra = sheet('Obra');
+      if(obra && obra[0]){ const r = obra[0]; novo.obra = {nome:String(r.nome||novo.obra.nome), cliente:String(r.cliente||novo.obra.cliente), prazo:normData(r.prazo, novo.obra.prazo), valorContratado:num(r.valorcontratado)||novo.obra.valorContratado}; }
+
+      const orc = sheet('Orcamento');
+      if(orc){
+        novo.orcamento = orc.map(r=>({
+          id: idOr(r.id, uid), etapa:String(pick(r,'etapa')).trim(), servico:String(pick(r,'servico')).trim(), insumo:String(pick(r,'insumo')).trim(),
+          unidade:String(pick(r,'unidade','unid')).trim(), qtd:num(pick(r,'quantidade','qtd')), precoUnit:num(pick(r,'precounitario','precounit','preco','valorunitario'))
+        })).filter(i=>i.etapa && i.servico);
+      }
+      const et = sheet('EtapaAvanco');
+      if(et){ novo.etapaAvanco = {}; et.forEach(r=>{ if(r.etapa) novo.etapaAvanco[String(r.etapa)] = num(r.avancofisicopct); }); }
+      [...new Set(novo.orcamento.map(i=>i.etapa))].forEach(x=>{ if(!(x in novo.etapaAvanco)) novo.etapaAvanco[x]=0; });
+
+      const forn = sheet('Fornecedores'); if(forn) novo.fornecedores = forn.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), contato:String(r.contato||'')})).filter(f=>f.nome);
+      const mat = sheet('Materiais'); if(mat) novo.materiais = mat.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), unidade:String(r.unidade||''), saldo:num(r.saldo), custoMedio:num(r.customedio)})).filter(m=>m.nome);
+      const nfs = sheet('NotasFiscais');
+      if(nfs){
+        const g = {};
+        nfs.forEach(r=>{ const key = r.id || r.numero; if(!key) return;
+          if(!g[key]) g[key] = {id:idOr(r.id,uid), numero:String(r.numero||''), fornecedorId:parseInt(r.fornecedorid)||null, data:normData(r.data, todayStr()), itens:[]};
+          g[key].itens.push({materialId:parseInt(r.materialid)||null, qtd:num(r.quantidade), valorUnit:num(r.valorunitario)}); });
+        novo.notasFiscais = Object.values(g);
+      }
+      const ped = sheet('ConsumoMaterial'); if(ped) novo.pedidos = ped.map(r=>({id:idOr(r.id,uid), orcamentoItemId:parseInt(r.orcamentoitemid)||null, materialId:parseInt(r.materialid)||null, qtd:num(r.quantidade), qtdSolicitada:num(r.quantidadesolicitada)||num(r.quantidade), valor:num(r.valor), data:normData(r.data, todayStr())}));
+      const emp = sheet('Empreiteiros'); if(emp) novo.empreiteiros = emp.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), contato:String(r.contato||''), especialidade:String(r.especialidade||'')})).filter(x=>x.nome);
+      const ctr = sheet('Contratos'); if(ctr) novo.contratos = ctr.map(r=>({id:idOr(r.id,uid), empreiteiroId:parseInt(r.empreiteiroid)||null, orcamentoItemId:parseInt(r.orcamentoitemid)||null, valorContratado:num(r.valorcontratado), formaPagamento:String(r.formapagamento||'')}));
+      const med = sheet('Medicoes'); if(med) novo.medicoes = med.map(r=>({id:idOr(r.id,uid), contratoId:parseInt(r.contratoid)||null, data:normData(r.data, todayStr()), percentual:num(r.percentualexecutado), valor:num(r.valor), status:String(r.status||'pendente')}));
+      const pag = sheet('Pagamentos'); if(pag) novo.pagamentos = pag.map(r=>({id:idOr(r.id,uid), tipo:String(r.tipo||'avulso'), origem:String(r.origem||''), orcamentoItemId:r.orcamentoitemid?parseInt(r.orcamentoitemid):null, valor:num(r.valor), dataProgramada:normData(r.dataprogramada, todayStr()), dataPagamento:r.datapagamento?normData(r.datapagamento,null):null, status:String(r.status||'programado'), medicaoId:r.medicaoid?parseInt(r.medicaoid):null}));
+
+      state = prevState;
+      if(!abas.length) throw new Error('sem abas reconhecidas');
+      ['notasFiscais:nf','pedidos:pedido','contratos:contrato','medicoes:medicao','pagamentos:pagamento'].forEach(p=>{ const [k,n] = p.split(':'); novo.nextIds[n] = Math.max(novo.nextIds[n]||1, maxId(novo[k])+1); });
+      const todos = [].concat(novo.orcamento, novo.fornecedores, novo.materiais, novo.empreiteiros);
+      novo.seq = Math.max(novo.seq||1000, maxId(todos));
+    }catch(err){
+      console.error(err);
+      toast('err','Não foi possível ler essa planilha', '<div>Use o modelo de orçamento ou um arquivo exportado pelo próprio sistema. As abas precisam ter os nomes originais (ex.: "Orcamento").</div>');
+      evt.target.value = ''; return;
+    }
+    evt.target.value = '';
+
+    /* Lançamentos que ficariam sem serviço por causa da troca do orçamento */
+    const ids = new Set(novo.orcamento.map(i=>i.id));
+    const orfaos = novo.pedidos.filter(p=>p.orcamentoItemId && !ids.has(p.orcamentoItemId)).length
+      + novo.contratos.filter(c=>c.orcamentoItemId && !ids.has(c.orcamentoItemId)).length
+      + novo.pagamentos.filter(p=>p.orcamentoItemId && !ids.has(p.orcamentoItemId)).length;
+    const aplicar = async ()=>{
+      if(!(await api('POST', '/api/importar', {estado: novo}))) return;
+      nfDraft = novoNfDraft();
+      irPara('dashboard');
+      toast('ok','Planilha importada', `<div>Abas atualizadas: ${abas.map(esc).join(', ')}. ${state.orcamento.length} serviços no orçamento.</div>`);
+    };
+    if(orfaos>0){
+      confirmar('O orçamento novo não tem alguns serviços antigos', `${orfaos} lançamento(s) já feitos estão ligados a serviços que não existem na planilha. Consumos e contratos desses serviços serão descartados, e pagamentos passam a ser despesa geral. Para manter tudo ligado, importe a planilha exportada pelo sistema, que guarda os IDs.`, 'Importar mesmo assim', aplicar, true);
+    } else aplicar();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------------------- Render principal ---------------------- */
+function renderAll(){
+  renderMenu(); updateTopbar(); renderStatus();
+  const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, suprimentos:renderSuprimentos, estoque:renderEstoque, contratos:renderContratos, financeiro:renderFinanceiro};
+  if(!map[currentTab]) currentTab = 'inicio';
+  const f = funcaoDe(currentTab, currentAnchor), mod = moduloDaTab(currentTab);
+  const crumb = currentTab==='inicio' ? '' : `<div class="crumb">${esc(mod.label)} / <b>${esc(f ? f.label : '')}</b></div>`;
+  document.getElementById('main').innerHTML = crumb + map[currentTab]();
+  document.querySelectorAll('[data-etapa-avanco]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const et = e.target.dataset.etapaAvanco;
+      api('POST', '/api/etapa-avanco', {etapa: et, percentual: Math.max(0, Math.min(100, parseFloat(e.target.value)||0))});
+    });
+  });
+  document.querySelectorAll('[data-obra]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const k = e.target.dataset.obra;
+      if(k==='nome' && !e.target.value.trim()){ erro('O nome da obra não pode ficar vazio.'); e.target.value = state.obra.nome; return; }
+      api('POST', '/api/obra', {[k]: k==='valorContratado' ? (parseFloat(e.target.value)||0) : e.target.value}).then(r=>{ if(r) toast('ok','Dados da obra salvos',''); });
+    });
+  });
+  document.querySelectorAll('details.intro').forEach(d=> d.addEventListener('toggle', ()=> setPref('intro-'+d.dataset.intro, d.open)));
+  salvar();
+}
+
+renderTopbar();
+document.getElementById('main').innerHTML = '<div class="empty">Carregando a sua obra…</div>';
+fetch('/api/estado', {credentials: 'same-origin'}).then(async r=>{
+  if(r.status === 401){ location.href = '/conta/login/?next=/'; return; }
+  const j = await r.json();
+  state = j.estado;
+  nfDraft = novoNfDraft();
+  currentTab = prefs().tab || 'inicio';
+  if(prefs().menuRecolhido) document.getElementById('frame').classList.add('menu-collapsed');
+  renderAll();
+}).catch(()=>{
+  document.getElementById('main').innerHTML = '<div class="empty">Não foi possível carregar a obra. Confira a internet e recarregue a página.</div>';
+});
+</script>
+
+</body>
+</html>
