@@ -1,4 +1,6 @@
-# ObraSimples · versão com servidor (Django)
+# Prumo · controle de obra (Django)
+
+> Antes chamado ObraSimples. O repositório e o endereço técnico continuam com o nome antigo.
 
 Controle de obra para pequenas construtoras, agora com **login, banco de dados e painel de administração**.
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>[hidden]{display:none!important}</style>
-<title>ObraSimples</title>
+<title>Prumo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -360,7 +360,7 @@
 
 <script>
 /* =====================================================================
-   OBRASIMPLES — protótipo funcional (obra única, dados salvos no navegador)
+   PRUMO — controle de obra (dados no servidor)
    ===================================================================== */
 
 /* ---------------------- Utilitários ---------------------- */
@@ -399,7 +399,7 @@ const GLOSSARIO = {
 function t(key, label){ return `<button type="button" class="term" data-term="${key}">${esc(label || GLOSSARIO[key][0])}</button>`; }
 
 /* ---------------------- Estado ---------------------- */
-const STORAGE_KEY = 'obrasimples-v2';
+const STORAGE_KEY = 'prumo-v1';
 let state;
 
 function estadoVazio(){
@@ -792,10 +792,11 @@ function renderTopbar(){
     <div class="brand">
       <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
         <rect width="30" height="30" rx="6" fill="#1C2533"/>
-        <path d="M7 22 L15 8 L23 22" stroke="#FFFFFF" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
-        <path d="M11 22 L15 15 L19 22" stroke="#E07B24" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <path d="M15 4.5 V11" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+        <rect x="12.6" y="10.6" width="4.8" height="2.4" rx="0.8" fill="#FFFFFF"/>
+        <path d="M10.4 13.8 H19.6 Q19.6 18.2 15 25.5 Q10.4 18.2 10.4 13.8 Z" fill="#E07B24"/>
       </svg>
-      <div><b>ObraSimples</b><small>Controle de obra</small></div>
+      <div><b>Prumo</b><small>Controle de obra</small></div>
     </div>
     <div class="notif-wrap" id="obra-wrap"><button class="obra-chip" id="obra-chip" title="Trocar de obra"><i></i><span id="obra-chip-txt"></span><span id="obra-chip-n"></span></button><div class="dropdown wide" id="obra-list" hidden style="left:0;right:auto;"></div></div>
     <div class="top-right">
@@ -898,7 +899,7 @@ function updateTopbar(){
   dot.textContent = n; dot.hidden = !n;
 }
 function renderStatus(){
-  document.getElementById('statusbar').innerHTML = `<span>Obra: <b>${state.semObra ? 'nenhuma liberada' : esc(state.obra.nome||'Minha obra')}</b></span><span>${state.exemplo?'Dados de exemplo · ':''}Salvo no servidor</span><span>ObraSimples · protótipo v0.3</span>`;
+  document.getElementById('statusbar').innerHTML = `<span>Obra: <b>${state.semObra ? 'nenhuma liberada' : esc(state.obra.nome||'Minha obra')}</b></span><span>${state.exemplo?'Dados de exemplo · ':''}Salvo no servidor</span><span>Prumo · protótipo v0.4</span>`;
 }
 
 /* Cliques em qualquer elemento com data-go (menu, mural, avisos, atalhos) */
@@ -978,7 +979,7 @@ function renderInicio(){
       <section class="panel">
         <div class="panel-head"><span class="tile blue">${ic('book')}</span><h3>Aprenda a usar</h3></div>
         <div class="plist">
-          <button class="prow" ${goAttr('guia')}><span class="pt"><b>Como o ObraSimples funciona</b><small>Os dois caminhos: material e mão de obra</small></span></button>
+          <button class="prow" ${goAttr('guia')}><span class="pt"><b>Como o Prumo funciona</b><small>Os dois caminhos: material e mão de obra</small></span></button>
           <button class="prow" ${goAttr('guia','tour')}><span class="pt"><b>Teste em 5 minutos</b><small>Siga os passos e veja os números mudarem</small></span></button>
           <button class="prow" ${goAttr('guia','por-que')}><span class="pt"><b>Por que a compra não vira gasto na hora?</b><small>Estoque × realizado</small></span></button>
           <button class="prow" data-termrow="medicao"><span class="pt"><b>O que é medição?</b><small>Glossário</small></span></button>
@@ -1037,7 +1038,7 @@ function renderGuia(){
     ${i?'<div class="flow-arrow" aria-hidden="true">→</div>':''}
     <button class="flow-step" onclick="irPara('${p.tab}')"><span class="n">Passo ${i+1} · ${p.onde}</span><b>${p.titulo}</b><span>${p.txt}</span></button>`).join('')}</div>`;
   return `
-    <h2 class="section-title">Como o ObraSimples funciona</h2>
+    <h2 class="section-title">Como o Prumo funciona</h2>
     <p class="section-sub">Guia rápido para quem nunca usou um sistema de gestão</p>
     <p class="guide-lead">Pense no sistema como o caderno da obra, só que ele faz as contas sozinho. Você anota o que planejou gastar, o que comprou, o que usou e o que pagou. Ele mostra, a qualquer momento, se a obra está dentro do orçamento e quanto falta pagar.</p>
 
@@ -1730,7 +1731,7 @@ function baixarModeloOrcamento(){
   ws['!cols'] = [{wch:14},{wch:28},{wch:28},{wch:10},{wch:12},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Orcamento');
-  salvarArquivo(wb, 'modelo-orcamento-obrasimples.xlsx');
+  salvarArquivo(wb, 'modelo-orcamento-prumo.xlsx');
 }
 
 function exportarDadosCompletos(){
@@ -1854,7 +1855,7 @@ function renderAll(){
         <h2 class="section-title" style="margin-bottom:10px;">Nenhuma obra liberada para você ainda</h2>
         <p class="helptext" style="margin:0 0 18px;font-size:14px;">${su
           ? 'Você é administrador. Crie uma obra no painel, escolha o dono e, se quiser, libere o acesso para outras pessoas.'
-          : 'Assim que o administrador do ObraSimples vincular uma obra ao seu usuário, ela aparece aqui. Fale com ele e depois recarregue a página.'}</p>
+          : 'Assim que o administrador do Prumo vincular uma obra ao seu usuário, ela aparece aqui. Fale com ele e depois recarregue a página.'}</p>
         ${su ? '<a class="primary" href="/admin/obras/obra/add/" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;">Criar obra no painel</a>' : '<button class="primary" onclick="location.reload()">Recarregar</button>'}
       </div>`;
     salvar();

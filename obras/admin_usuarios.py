@@ -14,7 +14,7 @@ from .models import Obra
 
 EXPLICA_ACESSO_APP = """
 <div style="max-width:780px;line-height:1.6">
-<b>Ativo</b>: a pessoa consegue entrar no ObraSimples com usuário e senha.
+<b>Ativo</b>: a pessoa consegue entrar no Prumo com usuário e senha.
 Desmarque para <b>bloquear</b> o acesso sem apagar nada; a obra e os lançamentos dela continuam guardados.
 <br>Para vincular uma obra a esta pessoa, abra a obra em <i>Obras</i> e escolha-a como <b>Dono</b> ou em
 <b>Outros usuários com acesso</b>. Sem nenhuma obra liberada, ela entra no app e vê só um aviso.
@@ -67,7 +67,7 @@ class UsuarioAdmin(UserAdmin):
         (None, {"fields": ("username", "password")}),
         ("Dados pessoais", {"fields": ("first_name", "last_name", "email"),
                             "description": "O nome aparece no app, no canto superior direito."}),
-        ("Acesso ao ObraSimples", {"fields": ("is_active", "obras_vinculadas"), "description": EXPLICA_ACESSO_APP}),
+        ("Acesso ao Prumo", {"fields": ("is_active", "obras_vinculadas"), "description": EXPLICA_ACESSO_APP}),
         ("Acesso ao painel de administração", {"fields": ("is_staff", "is_superuser", "groups", "user_permissions"),
                                                "description": EXPLICA_ADMIN}),
         ("Datas", {"fields": ("last_login", "date_joined"), "classes": ("collapse",)}),
@@ -82,7 +82,7 @@ class UsuarioAdmin(UserAdmin):
     )
 
     AJUDA = {
-        "is_active": "Marcado: pode entrar no ObraSimples. Desmarcado: acesso bloqueado (os dados ficam guardados).",
+        "is_active": "Marcado: pode entrar no Prumo. Desmarcado: acesso bloqueado (os dados ficam guardados).",
         "is_staff": "Pode entrar no painel de administração (/admin). Sozinho não libera nada: combine com grupos ou permissões.",
         "is_superuser": "Pode tudo no /admin, sem precisar marcar grupos ou permissões.",
         "groups": "Pacotes prontos de permissões. Veja a explicação acima.",

@@ -1,5 +1,5 @@
 """
-Regras de negócio do ObraSimples. Toda alteração de dados passa por aqui,
+Regras de negócio do Prumo. Toda alteração de dados passa por aqui,
 dentro de uma transação, sempre filtrando pela obra do usuário logado.
 """
 from datetime import date

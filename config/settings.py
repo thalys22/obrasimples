@@ -1,5 +1,5 @@
 """
-Configurações do ObraSimples.
+Configurações do Prumo.
 
 Tudo que muda entre o seu computador e o servidor vem de variáveis de ambiente:
   DJANGO_SECRET_KEY       chave secreta (obrigatória em produção)
