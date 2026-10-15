@@ -192,7 +192,7 @@ templates/         telas de login e troca de senha
 
 O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). No Orçamento, "Adicionar serviço → Pelo SINAPI" busca a composição, mostra os insumos e preços (com aviso quando o preço é de São Paulo ou falta) e copia tudo para a obra. Composições e insumos do SINAPI não são editáveis (use Duplicar). A UF e o regime padrão ficam em Dados da obra.
 
-**Carregar um mês novo (administrador, pelo site):** Cadastros → "Carregar o SINAPI". Escolha o .xlsx mensal da Caixa (todas as UFs), marque as UFs e os regimes e clique em Carregar. A planilha é lida no seu navegador (use um computador; leva cerca de 30 s e uns 700 MB de memória) e os dados seguem em partes para o servidor, que confere o custo de cada composição antes de gravar. Cada UF e regime é gravado por inteiro ou não é gravado, e reenviar o mesmo arquivo não duplica nada. Só quem pode alterar a base geral vê essa seção.
+**Carregar um mês novo (administrador, pelo site):** Administração (`/admin`) → Referências SINAPI → "Carregar planilha do SINAPI". Escolha o .xlsx mensal da Caixa (todas as UFs), marque as UFs e os regimes e clique em Carregar. A planilha é lida no seu navegador (use um computador; leva cerca de 30 s e uns 700 MB de memória) e os dados seguem em partes para o servidor, que confere o custo de cada composição antes de gravar. Cada UF e regime é gravado por inteiro ou não é gravado, e reenviar o mesmo arquivo não duplica nada. Só quem pode alterar a base geral (e entra no `/admin`) acessa a página; o mesmo vale para o link que aparece em Cadastros.
 
 **Alternativa por comando** (no seu computador, com `DATABASE_URL` do banco):
 

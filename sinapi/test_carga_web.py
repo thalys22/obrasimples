@@ -169,3 +169,19 @@ class CargaWebTests(TestCase):
         CargaParte.objects.filter(carga_id=cid).update(criada_em=timezone.now() - timedelta(days=2))
         self.post("/api/sinapi/carga/iniciar", dict(base="2026-09", ufs=["SE"], regimes=["sd"], sha256="d" * 64))
         self.assertFalse(CargaParte.objects.filter(carga_id=cid).exists())
+
+
+class PaginaAdminCargaTests(TestCase):
+    def test_pagina_de_carga_so_para_administrador(self):
+        url = "/admin/sinapi/referencia/carregar/"
+        c = Client(HTTP_HOST="localhost")
+        self.assertEqual(c.get(url).status_code, 302)  # anônimo vai para o login
+        User.objects.create_user("comum", password="x", is_staff=True)
+        c.login(username="comum", password="x")
+        self.assertEqual(c.get(url).status_code, 403)
+        User.objects.create_superuser("adm", password="x")
+        c.login(username="adm", password="x")
+        r = c.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Carregar o SINAPI")
+        self.assertEqual(c.get("/admin/sinapi/referencia/").status_code, 200)

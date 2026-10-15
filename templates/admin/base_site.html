@@ -4,6 +4,26 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2030%2030%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2230%22%20height%3D%2230%22%20rx%3D%227%22%20fill%3D%22%231C2533%22%2F%3E%3Cpath%20d%3D%22M10%2023V7h6.2a4.8%204.8%200%200%201%200%209.6H10%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.6%22%20fill%3D%22none%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M19.5%2016.6V21%22%20stroke%3D%22%23E07B24%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2219.5%22%20cy%3D%2222.6%22%20r%3D%222%22%20fill%3D%22%23E07B24%22%2F%3E%3C%2Fsvg%3E">
 {% endblock %}
 
+{% block extrastyle %}{{ block.super }}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Mesma identidade do site: verde do menu, grafite e laranja de destaque */
+  :root, html[data-theme="light"] {
+    --primary:#1F4A35; --secondary:#1C2533; --accent:#E07B24;
+    --header-bg:#1C2533; --header-color:#fff; --header-branding-color:#E07B24; --header-link-color:#fff;
+    --breadcrumbs-bg:#1F4A35; --breadcrumbs-link-fg:#fff; --breadcrumbs-fg:#cfe3d8;
+    --module-header-bg:#1F4A35; --module-header-color:#fff;
+    --link-fg:#1F4A35; --link-hover-color:#E07B24; --body-bg:#F3F4F6; --hairline-color:#E3E6EA;
+    --button-bg:#1F4A35; --button-hover-bg:#17382a; --default-button-bg:#E07B24; --default-button-hover-bg:#c46a1c;
+    --selected-row:#fdf1e6; --object-tools-bg:#1C2533; --object-tools-hover-bg:#1F4A35;
+  }
+  body, input, select, textarea, button { font-family: Inter, system-ui, sans-serif; }
+  #header { border-bottom: 3px solid #E07B24; }
+  .module, #changelist .paginator { border-radius: 10px; overflow: hidden; }
+  .module caption, .module h2, .module th { text-transform: none; letter-spacing: 0; }
+</style>
+{% endblock %}
+
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
 
 {% block branding %}
