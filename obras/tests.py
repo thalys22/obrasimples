@@ -105,10 +105,14 @@ class RegrasTests(Base):
         S.recomecar(self.obra, "vazio")
         self.item = S.adicionar_item(self.obra, dict(etapa="Acabamento", servico="Piso", unidade="m²", qtd=100, precoUnit=80))
         self.forn = S.adicionar_fornecedor(self.obra, dict(nome="Loja"))
-        self.mat = S.adicionar_material(self.obra, dict(nome="Porcelanato", unidade="m²"))
+        self.ins = S.salvar_insumo(self.obra, self.ana, dict(descricao="Porcelanato", unidade="m²", tipo="material", preco=0))
+        self.mat = S.material_do_insumo(self.obra, self.ins)
 
-    def nf(self, qtd, vu, num="1"):
-        return S.lancar_nf(self.obra, dict(fornecedorId=self.forn.pk, numero=num, data="2026-10-01", itens=[dict(materialId=self.mat.pk, qtd=qtd, valorUnit=vu)]))
+    def nf(self, qtd, vu, num="1", servico=None):
+        it = dict(insumoId=self.ins.pk, qtd=qtd, valorUnit=vu)
+        if servico:
+            it["orcamentoItemId"] = servico.pk
+        return S.lancar_nf(self.obra, dict(fornecedorId=self.forn.pk, numero=num, data="2026-10-01", itens=[it]))
 
     def test_custo_medio_ponderado_e_pagamento_da_nota(self):
         self.nf(100, 30, "1")
@@ -159,19 +163,118 @@ class RegrasTests(Base):
             S.lancar_nf(self.obra, dict(fornecedorId=self.forn.pk, numero="9", data="2026-10-01", itens=[]))
 
 
+class EstoqueNotasTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.obra = S.obter_obra(self.ana)
+        S.recomecar(self.obra, "vazio")
+        self.serv = S.adicionar_item(self.obra, dict(etapa="Acabamento", servico="Piso", unidade="m²", qtd=100, precoUnit=80))
+        self.outro = S.adicionar_item(self.obra, dict(etapa="Acabamento", servico="Pintura", unidade="m²", qtd=100, precoUnit=30))
+        self.forn = S.adicionar_fornecedor(self.obra, dict(nome="Loja"))
+        self.ins = S.salvar_insumo(self.obra, self.ana, dict(descricao="Argamassa", unidade="sc", tipo="material", preco=0))
+
+    def nf(self, itens, num="1", tipo=None):
+        d = dict(fornecedorId=self.forn.pk, numero=num, data="2026-10-01", itens=itens)
+        if tipo:
+            d["tipo"] = tipo
+        return S.lancar_nf(self.obra, d)
+
+    def test_material_nasce_da_primeira_nota_e_e_reaproveitado(self):
+        self.assertEqual(self.obra.materiais.count(), 0)
+        self.nf([dict(insumoId=self.ins.pk, qtd=10, valorUnit=20)], "1")
+        self.nf([dict(insumoId=self.ins.pk, qtd=10, valorUnit=30)], "2")
+        mat = self.obra.materiais.get()
+        self.assertEqual((mat.insumo_id, mat.saldo, mat.custo_medio), (self.ins.pk, Decimal("20"), Decimal("25")))
+
+    def test_item_sem_insumo_e_recusado(self):
+        with self.assertRaises(S.RegraNegocio):
+            self.nf([dict(qtd=1, valorUnit=1)])
+
+    def test_nota_ligada_ao_servico_nao_e_gasto(self):
+        nota = self.nf([dict(insumoId=self.ins.pk, orcamentoItemId=self.serv.pk, qtd=10, valorUnit=20)])
+        self.assertEqual(self.serv.compras.count(), 1)
+        self.assertEqual(self.serv.consumos.count(), 0)  # comprado para o serviço, mas ainda nada baixado
+        self.assertEqual(nota.pagamento.valor, Decimal("200.00"))
+        self.assertEqual(nota.avisos, [f"Argamassa não está previsto no serviço \"Piso\"."])  # serviço avulso, sem composição
+
+    def test_aviso_some_quando_o_insumo_esta_previsto(self):
+        comp = Composicao.objects.get(obra=None, codigo="C-0013")
+        item = S.adicionar_item(self.obra, dict(etapa="Pisos", composicaoId=comp.pk, qtd=10))
+        previsto = item.insumos.first().insumo
+        nota = self.nf([dict(insumoId=previsto.pk, orcamentoItemId=item.pk, qtd=1, valorUnit=1)])
+        self.assertEqual(nota.avisos, [])
+
+    def test_servico_com_compra_nao_pode_ser_excluido(self):
+        self.nf([dict(insumoId=self.ins.pk, orcamentoItemId=self.serv.pk, qtd=1, valorUnit=1)])
+        with self.assertRaises(S.RegraNegocio):
+            S.excluir_item(self.obra, self.serv.pk)
+
+    def test_documento_que_nao_e_nf_tem_tipo_e_rotulo(self):
+        nota = self.nf([dict(insumoId=self.ins.pk, qtd=1, valorUnit=10)], "77", tipo="recibo")
+        self.assertEqual((nota.tipo, nota.pagamento.origem), ("recibo", "Recibo 77"))
+        with self.assertRaises(S.RegraNegocio):
+            self.nf([dict(insumoId=self.ins.pk, qtd=1, valorUnit=10)], "78", tipo="xyz")
+
+    def test_baixa_em_servico_exige_servico(self):
+        self.nf([dict(insumoId=self.ins.pk, qtd=10, valorUnit=20)])
+        mat = self.obra.materiais.get()
+        with self.assertRaises(S.RegraNegocio):
+            S.registrar_consumo(self.obra, dict(materialId=mat.pk, qtd=1, data="2026-10-02"))
+
+    def test_baixa_sem_servico_exige_motivo_e_nao_vira_gasto_de_servico(self):
+        self.nf([dict(insumoId=self.ins.pk, orcamentoItemId=self.serv.pk, qtd=10, valorUnit=20)])
+        mat = self.obra.materiais.get()
+        with self.assertRaises(S.RegraNegocio):
+            S.registrar_consumo(self.obra, dict(tipo="perda", materialId=mat.pk, qtd=1, data="2026-10-02"))
+        c = S.registrar_consumo(self.obra, dict(tipo="quebra", observacao="Caiu do caminhão", materialId=mat.pk, qtd=2, data="2026-10-02"), self.ana)
+        mat.refresh_from_db()
+        self.assertEqual((c.item_id, c.tipo, c.valor, mat.saldo, c.criado_por_id), (None, "quebra", Decimal("40.00"), Decimal("8"), self.ana.pk))
+        self.assertEqual(self.serv.consumos.count(), 0)
+        with self.assertRaises(S.RegraNegocio):
+            S.registrar_consumo(self.obra, dict(tipo="xyz", observacao="a", materialId=mat.pk, qtd=1, data="2026-10-02"))
+
+    def test_saldo_so_sobe_por_documento(self):
+        # não há função nem rota que aumente o saldo sem nota
+        self.assertFalse(hasattr(S, "adicionar_material"))
+        self.assertFalse(hasattr(S, "ajustar_estoque"))
+
+    def test_estado_traz_tipos_e_vinculos(self):
+        self.nf([dict(insumoId=self.ins.pk, orcamentoItemId=self.serv.pk, qtd=10, valorUnit=20)])
+        e = self.estado()
+        self.assertEqual(e["notasFiscais"][0]["tipo"], "nota_fiscal")
+        self.assertEqual(e["notasFiscais"][0]["itens"][0]["orcamentoItemId"], self.serv.pk)
+        self.assertIn("quebra", [t["id"] for t in e["tiposBaixa"]])
+        self.assertIn("recibo", [t["id"] for t in e["tiposDocumento"]])
+
+    def test_outra_obra_nao_usa_servico_ou_insumo_alheio(self):
+        obra_b = Obra.objects.create(nome="Obra do Beto", dono=self.beto)
+        forn_b = S.adicionar_fornecedor(obra_b, dict(nome="X"))
+        with self.assertRaises(S.RegraNegocio):  # serviço da obra da Ana
+            S.lancar_nf(obra_b, dict(fornecedorId=forn_b.pk, numero="1", data="2026-10-01",
+                                     itens=[dict(insumoId=Insumo.objects.get(obra=None, codigo="I-0101").pk, orcamentoItemId=self.serv.pk, qtd=1, valorUnit=1)]))
+        with self.assertRaises(S.RegraNegocio):  # insumo próprio da obra da Ana
+            S.lancar_nf(obra_b, dict(fornecedorId=forn_b.pk, numero="2", data="2026-10-01", itens=[dict(insumoId=self.ins.pk, qtd=1, valorUnit=1)]))
+
+
 class ApiTests(Base):
     def test_fluxo_completo_pela_api(self):
         e = self.estado()
-        porcelanato = next(m for m in e["materiais"] if m["nome"].startswith("Piso porcelanato"))
+        porc = Insumo.objects.get(obra=None, codigo="I-0114")
         revest = next(i for i in e["orcamento"] if i["servico"].startswith("Piso porcelanato"))
         forn = e["fornecedores"][2]
-        r = self.post("/api/notas", {"fornecedorId": forn["id"], "numero": "NF-9001", "data": "2026-10-20", "itens": [{"materialId": porcelanato["id"], "qtd": 300, "valorUnit": 62}]})
+        r = self.post("/api/notas", {"fornecedorId": forn["id"], "numero": "NF-9001", "data": "2026-10-20",
+                                     "itens": [{"insumoId": porc.pk, "orcamentoItemId": revest["id"], "qtd": 300, "valorUnit": 62}]})
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["total"], 18600.0)
-        r = self.post("/api/consumos", {"orcamentoItemId": revest["id"], "materialId": porcelanato["id"], "qtd": 120, "data": "2026-10-21"})
+        e = r.json()["estado"]
+        mat = next(m for m in e["materiais"] if m["insumoId"] == porc.pk)  # nasceu da nota
+        self.assertEqual(mat["saldo"], 300.0)
+        nota = next(n for n in e["notasFiscais"] if n["numero"] == "NF-9001")
+        self.assertEqual(nota["itens"][0]["orcamentoItemId"], revest["id"])
+        r = self.post("/api/consumos", {"orcamentoItemId": revest["id"], "materialId": mat["id"], "qtd": 120, "data": "2026-10-21"})
         self.assertEqual(r.json()["valor"], 7440.0)
         e = r.json()["estado"]
-        self.assertEqual(next(m for m in e["materiais"] if m["id"] == porcelanato["id"])["saldo"], 180.0)
+        self.assertEqual(next(m for m in e["materiais"] if m["id"] == mat["id"])["saldo"], 180.0)
         pend = next(p for p in e["pagamentos"] if p["origem"] == "NF-9001")
         r = self.post(f"/api/pagamentos/{pend['id']}/pagar")
         self.assertEqual(next(p for p in r.json()["estado"]["pagamentos"] if p["id"] == pend["id"])["status"], "pago")
@@ -192,7 +295,10 @@ class ApiTests(Base):
             self.assertEqual(len(e2[k]), len(e[k]), k)
         self.assertEqual(sum(p["valor"] for p in e2["pedidos"]), sum(p["valor"] for p in e["pedidos"]))
         ids = {i["id"] for i in e2["orcamento"]}
-        self.assertTrue(all(p["orcamentoItemId"] in ids for p in e2["pedidos"]))
+        self.assertTrue(all(p["orcamentoItemId"] in ids for p in e2["pedidos"] if p["tipo"] == "servico"))
+        self.assertTrue(any(p["tipo"] == "quebra" and p["orcamentoItemId"] is None for p in e2["pedidos"]))
+        compras = [i["orcamentoItemId"] for n in e2["notasFiscais"] for i in n["itens"]]
+        self.assertTrue(compras and all(c in ids for c in compras))
 
     def test_recomecar_em_branco(self):
         r = self.post("/api/recomecar", {"tipo": "vazio"})
@@ -475,13 +581,11 @@ class CatalogoTests(Base):
         self.assertEqual(r.status_code, 400)
         self.assertEqual(ItemOrcamento.objects.filter(obra=self.obra).count(), 2)
 
-    def test_material_do_estoque_ligado_ao_insumo(self):
+    def test_estoque_nao_aceita_entrada_manual(self):
         cimento = Insumo.objects.get(obra=None, codigo="I-0101")
         r = self.post("/api/materiais", {"insumoId": cimento.pk})
-        self.assertEqual(r.status_code, 200)
-        m = next(x for x in r.json()["estado"]["materiais"] if x["id"] == r.json()["id"])
-        self.assertEqual((m["nome"], m["unidade"], m["insumoId"]), (cimento.descricao, "sc", cimento.pk))
-        self.assertEqual(self.post("/api/materiais", {"insumoId": cimento.pk}).status_code, 400)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("nota fiscal", r.json()["erro"])
 
     def test_editar_quantidade_do_servico(self):
         comp = Composicao.objects.get(obra=None, codigo="C-0013")

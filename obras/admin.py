@@ -256,14 +256,14 @@ class ItemNotaInline(admin.TabularInline):
 
 @admin.register(NotaFiscal)
 class NotaFiscalAdmin(SoConsulta):
-    list_display = ("numero", "fornecedor", "data", "obra_col", "criada_em")
+    list_display = ("numero", "tipo", "fornecedor", "data", "obra_col", "criada_em")
     inlines = [ItemNotaInline]
     search_fields = ("numero", "obra__nome")
 
 
 @admin.register(Consumo)
 class ConsumoAdmin(SoConsulta):
-    list_display = ("data", "item", "material", "quantidade", "valor", "obra_col")
+    list_display = ("data", "tipo", "item", "material", "quantidade", "valor", "obra_col")
 
 
 @admin.register(Medicao)

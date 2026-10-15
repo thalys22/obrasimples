@@ -497,7 +497,7 @@ def importar_orcamento(obra, linhas):
 
 
 def item_tem_vinculo(item):
-    return item.consumos.exists() or item.contratos.exists() or item.pagamentos.exists()
+    return item.consumos.exists() or item.compras.exists() or item.contratos.exists() or item.pagamentos.exists()
 
 
 @transaction.atomic
@@ -513,14 +513,13 @@ def adicionar_fornecedor(obra, d):
     return Fornecedor.objects.create(obra=obra, nome=texto(d.get("nome"), "o nome do fornecedor"), contato=texto(d.get("contato"), "o contato", obrigatorio=False))
 
 
-def adicionar_material(obra, d):
-    """Coloca um insumo do cadastro no estoque da obra (saldo começa em zero)."""
-    if d.get("insumoId"):
-        ins = pegar_visivel(insumos_visiveis(obra), d.get("insumoId"), "Insumo")
-        if obra.materiais.filter(insumo=ins).exists():
-            raise RegraNegocio(f"{ins.codigo} · {ins.descricao} já está no estoque desta obra.")
-        return Material.objects.create(obra=obra, insumo=ins, nome=ins.descricao, unidade=ins.unidade)
-    return Material.objects.create(obra=obra, nome=texto(d.get("nome"), "o nome do material"), unidade=texto(d.get("unidade"), "a unidade", maximo=20))
+def material_do_insumo(obra, insumo):
+    """O estoque da obra para um insumo do cadastro. Nasce sozinho na primeira nota que o usa:
+    não existe mais entrada manual no estoque."""
+    mat = Material.objects.select_for_update().filter(obra=obra, insumo=insumo).first()
+    if mat is None:
+        mat = Material.objects.create(obra=obra, insumo=insumo, nome=insumo.descricao[:200], unidade=insumo.unidade)
+    return mat
 
 
 def adicionar_empreiteiro(obra, d):
@@ -534,16 +533,31 @@ def adicionar_empreiteiro(obra, d):
 # ---------------------------------------------------------------- estoque
 @transaction.atomic
 def lancar_nf(obra, d):
-    numero = texto(d.get("numero"), "o número da nota", maximo=60)
+    """Lança um documento de entrada (nota fiscal, recibo, fatura...). É a única forma de o saldo
+    de um material subir. Cada item aponta para um insumo do cadastro e, se quiser, para o serviço
+    do orçamento a que se destina. Devolve a nota; os avisos ficam em `nota.avisos`."""
+    numero = texto(d.get("numero"), "o número do documento", maximo=60)
+    tipo = d.get("tipo") or "nota_fiscal"
+    if tipo not in dict(NotaFiscal.TIPOS):
+        raise RegraNegocio("Tipo de documento inválido.")
     fornecedor = pegar(Fornecedor, obra, d.get("fornecedorId"), "Fornecedor")
     venc = data_iso(d.get("data"), "data de vencimento")
     itens = d.get("itens") or []
     if not itens:
-        raise RegraNegocio("Adicione pelo menos um item à nota.")
-    nota = NotaFiscal.objects.create(obra=obra, fornecedor=fornecedor, numero=numero, data=venc)
-    total = D0
-    for it in itens:
-        mat = Material.objects.select_for_update().get(pk=pegar(Material, obra, it.get("materialId"), "Material").pk)
+        raise RegraNegocio("Adicione pelo menos um item ao documento.")
+    nota = NotaFiscal.objects.create(obra=obra, fornecedor=fornecedor, numero=numero, data=venc, tipo=tipo)
+    total, avisos = D0, []
+    visiveis = insumos_visiveis(obra)
+    for n, it in enumerate(itens, start=1):
+        if it.get("insumoId"):
+            ins = pegar_visivel(visiveis, it.get("insumoId"), "Insumo")
+            mat = material_do_insumo(obra, ins)
+        elif it.get("materialId"):  # material que já existia (dados antigos e importação de planilha)
+            mat = Material.objects.select_for_update().get(pk=pegar(Material, obra, it.get("materialId"), "Material").pk)
+        else:
+            raise RegraNegocio(f"Item {n}: escolha o insumo.")
+        mat = Material.objects.select_for_update().get(pk=mat.pk)
+        item = pegar(ItemOrcamento, obra, it.get("orcamentoItemId"), "Serviço") if it.get("orcamentoItemId") else None
         qtd = dec(it.get("qtd"), "a quantidade", minimo=D0)
         vu = dec(it.get("valorUnit"), "o valor unitário", minimo=D0)
         entrada = qtd * vu
@@ -551,28 +565,42 @@ def lancar_nf(obra, d):
         mat.custo_medio = ((mat.saldo * mat.custo_medio + entrada) / novo_saldo).quantize(Decimal("0.000001"), ROUND_HALF_UP)
         mat.saldo = novo_saldo
         mat.save()
-        ItemNota.objects.create(nota=nota, material=mat, quantidade=qtd, valor_unitario=vu)
+        ItemNota.objects.create(nota=nota, material=mat, item=item, quantidade=qtd, valor_unitario=vu)
         total += entrada
-    origem = numero if numero.lower().startswith("nf") else f"NF {numero}"
+        if item and mat.insumo_id and not item.insumos.filter(insumo_id=mat.insumo_id).exists():
+            avisos.append(f"{mat.nome} não está previsto no serviço \"{item.servico}\".")
+    rotulo = "NF" if tipo == "nota_fiscal" else dict(NotaFiscal.TIPOS)[tipo]
+    origem = numero if numero.lower().startswith(rotulo.lower().split()[0]) else f"{rotulo} {numero}"
     Pagamento.objects.create(obra=obra, tipo=Pagamento.MATERIAL, origem=origem, valor=total.quantize(CENT, ROUND_HALF_UP), data_programada=venc, nota=nota)
+    nota.avisos = avisos
     return nota
 
 
 @transaction.atomic
-def registrar_consumo(obra, d):
-    item = pegar(ItemOrcamento, obra, d.get("orcamentoItemId"), "Serviço")
+def registrar_consumo(obra, d, usuario=None):
+    """Baixa de estoque. Uso em serviço: exige o serviço e vira gasto dele, a custo médio.
+    Perda, quebra, ajuste e devolução: sem serviço, exigem uma descrição e NÃO entram no gasto
+    de nenhum serviço. O saldo só diminui aqui; para aumentar, só com um documento de entrada."""
+    tipo = d.get("tipo") or Consumo.SERVICO
+    if tipo not in dict(Consumo.TIPOS):
+        raise RegraNegocio("Tipo de baixa inválido.")
+    item = None
+    obs = texto(d.get("observacao"), "o motivo da baixa", obrigatorio=tipo != Consumo.SERVICO)
+    if tipo == Consumo.SERVICO:
+        item = pegar(ItemOrcamento, obra, d.get("orcamentoItemId"), "Serviço")
     mat = Material.objects.select_for_update().get(pk=pegar(Material, obra, d.get("materialId"), "Material").pk)
     qtd = dec(d.get("qtd"), "a quantidade", minimo=D0)
     dia = data_iso(d.get("data"))
     if mat.saldo <= 0:
-        raise RegraNegocio(f"{mat.nome} está sem saldo no estoque. Lance uma nota fiscal primeiro.")
+        raise RegraNegocio(f"{mat.nome} está sem saldo no estoque. O saldo só entra por nota fiscal ou outro documento de entrada.")
     if qtd > mat.saldo and not d.get("aceitarParcial"):
         raise RegraNegocio(f"O estoque tem só {mat.saldo.normalize():f} {mat.unidade} de {mat.nome}.")
     usada = min(qtd, mat.saldo)
     valor = (usada * mat.custo_medio).quantize(CENT, ROUND_HALF_UP)
     mat.saldo -= usada
     mat.save()
-    return Consumo.objects.create(obra=obra, item=item, material=mat, quantidade=usada, quantidade_solicitada=qtd, valor=valor, data=dia)
+    return Consumo.objects.create(obra=obra, item=item, tipo=tipo, observacao=obs, criado_por=usuario if getattr(usuario, "pk", None) else None,
+                                  material=mat, quantidade=usada, quantidade_solicitada=qtd, valor=valor, data=dia)
 
 
 # ---------------------------------------------------------------- contratos e medições
@@ -718,16 +746,20 @@ def substituir(obra, e):
         forn = m_forn.get(str(nf.get("fornecedorId")))
         if not forn:
             continue
-        nota = NotaFiscal.objects.create(obra=obra, fornecedor=forn, numero=str(nf.get("numero") or "")[:60], data=data_iso(nf.get("data")) or timezone.localdate())
+        nota = NotaFiscal.objects.create(obra=obra, fornecedor=forn, numero=str(nf.get("numero") or "")[:60], data=data_iso(nf.get("data")) or timezone.localdate(),
+                                         tipo=nf.get("tipo") if nf.get("tipo") in dict(NotaFiscal.TIPOS) else "nota_fiscal")
         for it in nf.get("itens") or []:
             mat = m_mat.get(str(it.get("materialId")))
             if mat:
-                ItemNota.objects.create(nota=nota, material=mat, quantidade=num(it.get("qtd")), valor_unitario=num(it.get("valorUnit")))
+                ItemNota.objects.create(nota=nota, material=mat, item=m_item.get(str(it.get("orcamentoItemId"))) if it.get("orcamentoItemId") else None,
+                                        quantidade=num(it.get("qtd")), valor_unitario=num(it.get("valorUnit")))
         m_nf[str(nf.get("id"))] = nota
     for p in e.get("pedidos") or []:
         item, mat = m_item.get(str(p.get("orcamentoItemId"))), m_mat.get(str(p.get("materialId")))
-        if item and mat:
-            Consumo.objects.create(obra=obra, item=item, material=mat, quantidade=num(p.get("qtd")), quantidade_solicitada=num(p.get("qtdSolicitada") or p.get("qtd")),
+        tipo = p.get("tipo") if p.get("tipo") in dict(Consumo.TIPOS) else Consumo.SERVICO
+        if mat and (item if tipo == Consumo.SERVICO else True):
+            Consumo.objects.create(obra=obra, item=item if tipo == Consumo.SERVICO else None, tipo=tipo, observacao=str(p.get("observacao") or "")[:200],
+                                   material=mat, quantidade=num(p.get("qtd")), quantidade_solicitada=num(p.get("qtdSolicitada") or p.get("qtd")),
                                    valor=num(p.get("valor")).quantize(CENT), data=data_iso(p.get("data")))
     for x in e.get("empreiteiros") or []:
         m_emp[str(x.get("id"))] = Empreiteiro.objects.create(obra=obra, nome=str(x.get("nome") or "Empreiteiro")[:200], contato=str(x.get("contato") or "")[:200],
@@ -782,21 +814,18 @@ def carregar_exemplo(obra):
     f = [adicionar_fornecedor(obra, dict(nome=n, contato=c)) for n, c in [
         ("Cimento Forte Materiais", "(79) 3211-4400"), ("Ferragens União", "(79) 3211-8899"), ("Cerâmica Costa do Sol", "(79) 3025-1122")]]
     ins = {i.codigo: i for i in Insumo.objects.filter(obra=None)}
-
-    def material(cod, nome, un):
-        if cod in ins:
-            return adicionar_material(obra, dict(insumoId=ins[cod].pk))
-        return adicionar_material(obra, dict(nome=nome, unidade=un))
-
-    m = [material("I-0101", "Cimento CP-II 50 kg", "sc"), material("I-0107", "Aço CA-50 (vergalhão)", "kg"),
-         material("I-0106", "Bloco de concreto estrutural 14x19x39", "un"), material("I-0114", "Piso porcelanato / cerâmico", "m²")]
     e = [adicionar_empreiteiro(obra, dict(nome=n, contato=c, especialidade=s)) for n, c, s in [
         ("Equipe Silva Estrutura", "(79) 99911-2233", "Estrutura/Alvenaria"), ("Elétrica Santos", "(79) 99822-1010", "Instalações elétricas")]]
-    nf1 = lancar_nf(obra, dict(fornecedorId=f[0].pk, numero="NF-4521", data="2026-06-02", itens=[dict(materialId=m[0].pk, qtd=100, valorUnit="33.9"), dict(materialId=m[1].pk, qtd=2200, valorUnit="7.2")]))
-    lancar_nf(obra, dict(fornecedorId=f[1].pk, numero="NF-1187", data="2026-06-10", itens=[dict(materialId=m[2].pk, qtd=6500, valorUnit="4.1")]))
-    registrar_consumo(obra, dict(orcamentoItemId=armacao.pk, materialId=m[1].pk, qtd=1400, data="2026-06-12"))
-    registrar_consumo(obra, dict(orcamentoItemId=alvenaria.pk, materialId=m[2].pk, qtd=4200, data="2026-06-20"))
-    registrar_consumo(obra, dict(orcamentoItemId=alvenaria.pk, materialId=m[0].pk, qtd=40, data="2026-06-20"))
+    nf1 = lancar_nf(obra, dict(fornecedorId=f[0].pk, numero="NF-4521", data="2026-06-02", itens=[
+        dict(insumoId=ins["I-0101"].pk, orcamentoItemId=alvenaria.pk, qtd=100, valorUnit="33.9"),
+        dict(insumoId=ins["I-0107"].pk, orcamentoItemId=armacao.pk, qtd=2200, valorUnit="7.2")]))
+    lancar_nf(obra, dict(fornecedorId=f[1].pk, numero="NF-1187", data="2026-06-10", itens=[
+        dict(insumoId=ins["I-0106"].pk, orcamentoItemId=alvenaria.pk, qtd=6500, valorUnit="4.1")]))
+    cimento, aco, bloco = (obra.materiais.get(insumo=ins[c]) for c in ("I-0101", "I-0107", "I-0106"))
+    registrar_consumo(obra, dict(orcamentoItemId=armacao.pk, materialId=aco.pk, qtd=1400, data="2026-06-12"))
+    registrar_consumo(obra, dict(orcamentoItemId=alvenaria.pk, materialId=bloco.pk, qtd=4200, data="2026-06-20"))
+    registrar_consumo(obra, dict(orcamentoItemId=alvenaria.pk, materialId=cimento.pk, qtd=40, data="2026-06-20"))
+    registrar_consumo(obra, dict(tipo="quebra", observacao="Blocos quebrados no descarregamento", materialId=bloco.pk, qtd=120, data="2026-06-21"))
     c1 = criar_contrato(obra, dict(empreiteiroId=e[0].pk, orcamentoItemId=alvenaria.pk, valorContratado=26000, formaPagamento="Por medição mensal"))
     c2 = criar_contrato(obra, dict(empreiteiroId=e[1].pk, orcamentoItemId=eletrica.pk, valorContratado=12500, formaPagamento="Por medição mensal"))
     aprovar_medicao(obra, registrar_medicao(obra, dict(contratoId=c1.pk, data="2026-06-25", percentual=40)).pk)
@@ -837,6 +866,7 @@ def estado_sem_obra(usuario):
         "semObra": True,
         "obra": {"nome": "", "cliente": "", "prazo": "", "valorContratado": 0}, "exemplo": False,
         "orcamento": [], "etapas": [], "etapaAvanco": {}, "fornecedores": [], "materiais": [], "notasFiscais": [], "pedidos": [],
+        "tiposDocumento": [{"id": k, "nome": v} for k, v in NotaFiscal.TIPOS], "tiposBaixa": [{"id": k, "nome": v} for k, v in Consumo.TIPOS],
         "empreiteiros": [], "contratos": [], "medicoes": [], "pagamentos": [],
         **catalogo(None, usuario),
         "usuario": _usuario(usuario),
@@ -850,8 +880,8 @@ def estado(obra, usuario):
     iso = lambda d: d.isoformat() if d else ""
     notas = []
     for n in obra.notas.prefetch_related("itens"):
-        notas.append({"id": n.pk, "fornecedorId": n.fornecedor_id, "numero": n.numero, "data": iso(n.data),
-                      "itens": [{"materialId": i.material_id, "qtd": f(i.quantidade), "valorUnit": f(i.valor_unitario)} for i in n.itens.all()]})
+        notas.append({"id": n.pk, "fornecedorId": n.fornecedor_id, "numero": n.numero, "data": iso(n.data), "tipo": n.tipo,
+                      "itens": [{"materialId": i.material_id, "orcamentoItemId": i.item_id, "qtd": f(i.quantidade), "valorUnit": f(i.valor_unitario)} for i in n.itens.all()]})
     etapas = list(obra.etapas.all())
     orc = obra.orcamento.select_related("etapa").prefetch_related("insumos")
     return {
@@ -868,7 +898,10 @@ def estado(obra, usuario):
         "fornecedores": [{"id": x.pk, "nome": x.nome, "contato": x.contato} for x in obra.fornecedores.all()],
         "materiais": [{"id": x.pk, "insumoId": x.insumo_id, "nome": x.nome, "unidade": x.unidade, "saldo": f(x.saldo), "custoMedio": f(x.custo_medio)} for x in obra.materiais.all()],
         "notasFiscais": notas,
-        "pedidos": [{"id": c.pk, "orcamentoItemId": c.item_id, "materialId": c.material_id, "qtd": f(c.quantidade), "qtdSolicitada": f(c.quantidade_solicitada), "valor": f(c.valor), "data": iso(c.data)} for c in obra.consumos.all()],
+        "pedidos": [{"id": c.pk, "orcamentoItemId": c.item_id, "materialId": c.material_id, "tipo": c.tipo, "observacao": c.observacao, "qtd": f(c.quantidade),
+                     "qtdSolicitada": f(c.quantidade_solicitada), "valor": f(c.valor), "data": iso(c.data)} for c in obra.consumos.all()],
+        "tiposDocumento": [{"id": k, "nome": v} for k, v in NotaFiscal.TIPOS],
+        "tiposBaixa": [{"id": k, "nome": v} for k, v in Consumo.TIPOS],
         "empreiteiros": [{"id": x.pk, "nome": x.nome, "contato": x.contato, "especialidade": x.especialidade} for x in obra.empreiteiros.all()],
         "contratos": [{"id": c.pk, "empreiteiroId": c.empreiteiro_id, "orcamentoItemId": c.item_id, "valorContratado": f(c.valor_contratado), "formaPagamento": c.forma_pagamento} for c in obra.contratos.all()],
         "medicoes": [{"id": m.pk, "contratoId": m.contrato_id, "data": iso(m.data), "percentual": f(m.percentual), "valor": f(m.valor), "status": m.status} for m in obra.medicoes.all()],

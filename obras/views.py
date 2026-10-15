@@ -148,18 +148,18 @@ def fornecedor_criar(request, obra, d):
 
 @api(["POST"])
 def material_criar(request, obra, d):
-    return {"id": S.adicionar_material(obra, d).pk}
+    raise S.RegraNegocio("O estoque não aceita entrada manual. Lance uma nota fiscal ou outro documento de entrada: o material entra no estoque por ele.")
 
 
 @api(["POST"])
 def nota_criar(request, obra, d):
     nota = S.lancar_nf(obra, d)
-    return {"id": nota.pk, "total": float(nota.pagamento.valor)}
+    return {"id": nota.pk, "total": float(nota.pagamento.valor), "avisos": nota.avisos}
 
 
 @api(["POST"])
 def consumo_criar(request, obra, d):
-    c = S.registrar_consumo(obra, d)
+    c = S.registrar_consumo(obra, d, request.user)
     return {"id": c.pk, "valor": float(c.valor), "qtd": float(c.quantidade)}
 
 

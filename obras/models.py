@@ -200,7 +200,10 @@ class Material(models.Model):
 
 
 class NotaFiscal(models.Model):
+    """Documento de entrada de material: nota fiscal ou outro documento que será pago."""
+    TIPOS = [("nota_fiscal", "Nota fiscal"), ("recibo", "Recibo"), ("fatura", "Fatura"), ("outro", "Outro documento")]
     obra = models.ForeignKey(Obra, on_delete=models.CASCADE, related_name="notas")
+    tipo = models.CharField(max_length=12, choices=TIPOS, default="nota_fiscal")
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.PROTECT, related_name="notas")
     numero = models.CharField(max_length=60)
     data = models.DateField(help_text="Vencimento do pagamento ao fornecedor")
@@ -218,6 +221,8 @@ class NotaFiscal(models.Model):
 class ItemNota(models.Model):
     nota = models.ForeignKey(NotaFiscal, on_delete=models.CASCADE, related_name="itens")
     material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name="entradas")
+    # Serviço do orçamento para o qual o material foi comprado (opcional). Não é gasto: o gasto é a baixa.
+    item = models.ForeignKey(ItemOrcamento, null=True, blank=True, on_delete=models.PROTECT, related_name="compras")
     quantidade = models.DecimalField(max_digits=16, decimal_places=4)
     valor_unitario = models.DecimalField(max_digits=16, decimal_places=4)
 
@@ -226,9 +231,16 @@ class ItemNota(models.Model):
 
 
 class Consumo(models.Model):
-    """Retirada de material do estoque para um serviço do orçamento."""
+    """Baixa de estoque: retirada de material para um serviço do orçamento (consumo) ou
+    saída sem serviço (perda, quebra, ajuste de inventário, devolução)."""
+    SERVICO, PERDA, QUEBRA, AJUSTE, DEVOLUCAO = "servico", "perda", "quebra", "ajuste", "devolucao"
+    TIPOS = [(SERVICO, "Uso em serviço"), (PERDA, "Perda ou furto"), (QUEBRA, "Quebra"),
+             (AJUSTE, "Ajuste de inventário"), (DEVOLUCAO, "Devolução ao fornecedor")]
     obra = models.ForeignKey(Obra, on_delete=models.CASCADE, related_name="consumos")
-    item = models.ForeignKey(ItemOrcamento, on_delete=models.PROTECT, related_name="consumos")
+    item = models.ForeignKey(ItemOrcamento, null=True, blank=True, on_delete=models.PROTECT, related_name="consumos")
+    tipo = models.CharField(max_length=12, choices=TIPOS, default=SERVICO)
+    observacao = models.CharField(max_length=200, blank=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name="consumos")
     quantidade = models.DecimalField(max_digits=16, decimal_places=4)
     quantidade_solicitada = models.DecimalField(max_digits=16, decimal_places=4)
