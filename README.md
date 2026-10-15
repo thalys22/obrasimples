@@ -69,7 +69,7 @@ Regras:
 - **Preço congelado.** Ao entrar no orçamento, o serviço guarda uma cópia dos insumos e preços daquele dia. Mudar o preço de um insumo depois não altera o orçado, a não ser que você use *atualizar pela composição* no serviço.
 - **Por verba.** Serviços sem composição (taxa, projeto, empreitada global) entram só com o valor.
 - **Etapas.** Escolhidas da lista padrão ou criadas pelo botão *Nova etapa*. Não há etapa em texto livre, o que evita duplicatas como "Terraplanagem" e "Terraplenagem".
-- **Estoque ligado ao insumo.** O material do estoque é um insumo do cadastro. Assim, em cada serviço dá para comparar a quantidade prevista com a quantidade que já saiu do estoque.
+- **Estoque ligado ao insumo, em três telas.** *Saldo de estoque* (consulta), *Notas fiscais* (lançar e consultar) e *Baixa de estoque*. O saldo só sobe com nota fiscal ou outro documento de entrada (recibo, fatura); não existe entrada manual, e o material nasce sozinho na primeira nota que usa o insumo. Cada item da nota pode apontar para o serviço do orçamento para o qual foi comprado ("comprado para"). O **gasto** do serviço é só a baixa de estoque, a custo médio; comprado e gasto aparecem lado a lado e nunca se somam. Perdas, quebras, ajustes e devoluções são baixas sem serviço, exigem motivo e não entram no gasto de nenhum serviço.
 - **Importação.** Insumos e composições se atualizam pelo código (tudo ou nada: se uma linha tiver erro, nada é gravado). A importação de orçamento acrescenta serviços sem apagar os que já existem.
 
 ## 3. Colocar no ar na Vercel (recomendado)

@@ -432,10 +432,11 @@ const GLOSSARIO = {
   realizado:['Realizado','Quanto já foi gasto de verdade naquele serviço: material retirado do estoque + medições aprovadas de empreiteiros + pagamentos avulsos ligados a ele.'],
   fisico:['Avanço físico','Quanto da obra já está pronto, em %. Quem acompanha a obra (engenheiro ou mestre) informa por etapa.'],
   financeiro:['Avanço financeiro','Quanto do orçamento já foi gasto, em %. Se ele corre muito à frente do avanço físico, a obra está gastando mais do que deveria para o que entregou.'],
-  nf:['Nota fiscal de entrada','O registro de uma compra que chegou na obra. Ao lançar, o material entra no estoque e o sistema cria a conta a pagar ao fornecedor.'],
+  nf:['Nota fiscal de entrada','O registro de uma compra que chegou na obra (ou outro documento que será pago: recibo, fatura). Ao lançar, o material entra no estoque e o sistema cria a conta a pagar ao fornecedor. É a única forma de o saldo subir.'],
   estoque:['Estoque (saldo)','O material que está guardado na obra e ainda não foi usado. Material em estoque ainda não conta como gasto de nenhum serviço.'],
+  baixa:['Baixa de estoque','A saída de material do estoque: para um serviço (vira gasto dele) ou por perda, quebra, ajuste de inventário ou devolução (não entra no gasto de nenhum serviço). É também como se corrige um saldo que ficou maior que o real.'],
   customedio:['Custo médio','O preço médio que você pagou por um material, considerando todas as compras. Ex.: 100 sacos a R$ 30 + 100 a R$ 34 = custo médio de R$ 32.'],
-  consumo:['Consumo','Retirada de material do estoque para um serviço. É nesse momento que o material vira gasto (realizado) daquele serviço.'],
+  consumo:['Consumo','Baixa de material do estoque para um serviço. É nesse momento que o material vira gasto (realizado) daquele serviço. A nota fiscal só diz para qual serviço o material foi comprado.'],
   empreiteiro:['Empreiteiro','A equipe terceirizada que executa um serviço (pedreiro, eletricista, pintor...).'],
   contrato:['Contrato','O acordo de valor com um empreiteiro para um serviço do orçamento.'],
   medicao:['Medição','A conferência de quanto o empreiteiro executou num período, em % do contrato. É a base para pagar: mediu 40%, paga 40% do valor.'],
@@ -625,7 +626,7 @@ function realizadoDoItem(itemId){ return origensDoItem(itemId).reduce((s,o)=>s+o
 function planejadoDoItem(item){ return item.qtd*item.precoUnit; }
 function statusClasse(pct){ if(pct>=100) return 'danger'; if(pct>=75) return 'warn'; return 'ok'; }
 function itemTemVinculo(id){
-  return state.pedidos.some(p=>p.orcamentoItemId===id) || state.contratos.some(c=>c.orcamentoItemId===id) || state.pagamentos.some(p=>p.orcamentoItemId===id);
+  return state.pedidos.some(p=>p.orcamentoItemId===id) || state.notasFiscais.some(n=>n.itens.some(it=>it.orcamentoItemId===id)) || state.contratos.some(c=>c.orcamentoItemId===id) || state.pagamentos.some(p=>p.orcamentoItemId===id);
 }
 
 /* ---------------------- Avisos e confirmação (substituem alert/confirm) ---------------------- */
@@ -732,14 +733,14 @@ const MODULOS = [
     {label:'Importar planilhas', tab:'cadastros', anchor:'sec-imp', keys:'excel insumos composicoes'},
   ]},
   {id:'estoque', label:'Estoque', icon:'box', items:[
-    {label:'Saldo de materiais', tab:'estoque', anchor:'sec-saldo', keys:'custo medio'},
-    {label:'Lançar nota fiscal', tab:'estoque', anchor:'nf-formbox', keys:'nf entrada compra chegou material'},
-    {label:'Notas fiscais lançadas', tab:'estoque', anchor:'sec-nfs', keys:'nf'},
-    {label:'Colocar material no estoque', tab:'estoque', anchor:'form-mat', keys:'insumo novo cadastrar material'},
+    {label:'Saldo de estoque', tab:'estoque', anchor:'sec-saldo', keys:'saldo material custo medio parado'},
+    {label:'Lançar nota fiscal', tab:'notas', anchor:'nf-formbox', keys:'nf entrada compra chegou material recibo fatura documento'},
+    {label:'Notas fiscais lançadas', tab:'notas', anchor:'sec-nfs', keys:'nf consultar fornecedor servico'},
+    {label:'Comprado e gasto por serviço', tab:'notas', anchor:'sec-nf-servico', keys:'nf servico comprado gasto'},
+    {label:'Baixar estoque', tab:'baixa', anchor:'form-baixa', keys:'consumo uso requisicao retirada baixa perda quebra ajuste devolucao'},
+    {label:'Baixas registradas', tab:'baixa', anchor:'sec-baixas', keys:'consumo uso historico'},
   ]},
   {id:'suprimentos', label:'Suprimentos', icon:'truck', items:[
-    {label:'Uso de material', tab:'suprimentos', anchor:'sec-uso', keys:'consumo requisicao'},
-    {label:'Registrar uso de material', tab:'suprimentos', anchor:'form-uso', keys:'consumo requisicao retirada baixa'},
     {label:'Fornecedores', tab:'suprimentos', anchor:'sec-forn'},
     {label:'Cadastrar fornecedor', tab:'suprimentos', anchor:'form-forn'},
   ]},
@@ -884,7 +885,7 @@ function renderTopbar(){
     const q = inp.value.trim();
     if(!q){
       const rec = (prefs().recentes||[]).map(r=>funcaoDe(r.tab, r.anchor)).filter(Boolean);
-      itens = (rec.length ? rec : FUNCOES.filter(f=>['nf-formbox','form-uso','form-med','sec-pag'].includes(f.anchor))).map(f=>({f}));
+      itens = (rec.length ? rec : FUNCOES.filter(f=>['nf-formbox','form-baixa','form-med','sec-pag'].includes(f.anchor))).map(f=>({f}));
       res.innerHTML = `<div class="dd-head">${rec.length?'Acessados recentemente':'Mais usados'}</div>` + itens.map((x,i)=>`<button class="dd-item ${i===sel?'sel':''}" data-i="${i}"><b>${esc(x.f.label)}</b><small>${esc(x.f.path)}</small></button>`).join('');
     } else {
       const termos = norm(q).split(/\s+/).filter(Boolean);
@@ -983,11 +984,11 @@ function renderInicio(){
   const av = avisos();
   let rec = (prefs().recentes||[]).map(x=>funcaoDe(x.tab, x.anchor)).filter(Boolean);
   const sugestao = !rec.length;
-  if(sugestao) rec = ['guia','nf-formbox','form-uso','sec-med'].map(k=> k==='guia' ? funcaoDe('guia') : FUNCOES.find(f=>f.anchor===k));
+  if(sugestao) rec = ['guia','nf-formbox','form-baixa','sec-med'].map(k=> k==='guia' ? funcaoDe('guia') : FUNCOES.find(f=>f.anchor===k));
   const linhaPag = (p, data) => { const d = new Date((data||p.dataProgramada)+'T00:00:00'); const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
     return `<button class="prow" ${goAttr('financeiro','sec-pag')}><span class="datebox ${vencido(p)?'late':''}"><b>${d.getDate()}</b><small>${MESES[d.getMonth()]}</small></span><span class="pt"><b>${esc(p.origem)}</b><small>${p.tipo==='material'?'Material':p.tipo==='mao-de-obra'?'Mão de obra':'Avulso'}${item?' · '+esc(item.servico):''}${vencido(p)?' · vencido':''}</small></span><span class="val">${fmtMoney(p.valor)}</span></button>`; };
   const hoje = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'});
-  const atalhos = [['nf-formbox','file','Lançar nota fiscal'],['form-uso','box','Registrar uso de material'],['form-med','doc','Registrar medição'],['form-pag','wallet','Lançar pagamento avulso'],['form-orc','plus','Adicionar serviço'],['dados','gear','Planilhas e dados da obra']];
+  const atalhos = [['nf-formbox','file','Lançar nota fiscal'],['form-baixa','box','Baixar estoque'],['form-med','doc','Registrar medição'],['form-pag','wallet','Lançar pagamento avulso'],['form-orc','plus','Adicionar serviço'],['dados','gear','Planilhas e dados da obra']];
   return `
     <h2 class="home-hello">Olá! Assim está a ${esc(state.obra.nome||'sua obra')} hoje.</h2>
     <p class="section-sub">${hoje.charAt(0).toUpperCase()+hoje.slice(1)}${state.exemplo?' · você está vendo dados de exemplo':''}</p>
@@ -1100,8 +1101,8 @@ function renderGuia(){
       ${fluxo([
         {tab:'cadastros', onde:'Cadastros', titulo:'Cadastre', txt:'Insumos com código único e composições de serviço. A base geral já vem com as mais comuns.'},
         {tab:'orcamento', onde:'Orçamento', titulo:'Planeje', txt:'Escolha a etapa, a composição do serviço e a quantidade. O preço e os insumos previstos saem sozinhos e viram a meta de gasto.'},
-        {tab:'estoque', onde:'Estoque', titulo:'Compre', txt:'Chegou material? Lance a nota fiscal. O material entra no estoque e a conta a pagar é criada.'},
-        {tab:'suprimentos', onde:'Suprimentos', titulo:'Use', txt:'Retirou material para um serviço? Registre o consumo. Aí ele vira gasto daquele serviço.'},
+        {tab:'notas', onde:'Estoque · Notas fiscais', titulo:'Compre', txt:'Chegou material? Lance a nota fiscal, escolhendo o insumo e o serviço. O material entra no estoque e a conta a pagar é criada.'},
+        {tab:'baixa', onde:'Estoque · Baixa', titulo:'Use', txt:'Retirou material para um serviço? Baixe do estoque. Aí ele vira gasto daquele serviço.'},
         {tab:'financeiro', onde:'Financeiro', titulo:'Pague', txt:'Quando o dinheiro sair, marque o pagamento como pago.'},
       ])}
       <div style="height:18px"></div>
@@ -1125,8 +1126,8 @@ function renderGuia(){
         <p class="helptext" style="margin-top:0;">A obra já vem com dados de exemplo. Siga os passos e veja os números se mexerem.</p>
         <ol class="tour">
           <li><div>Abra o <b>Painel</b> e veja como a obra está: quanto foi gasto, quanto está pronto e o que precisa de atenção.<br><button class="ghost" onclick="irPara('dashboard')">Abrir Painel</button></div></li>
-          <li><div>No <b>Estoque</b>, lance uma nota fiscal: 300 m² de Porcelanato 60x60 a R$ 62,00, fornecedor Cerâmica Costa do Sol. Veja o saldo subir.<br><button class="ghost" onclick="irPara('estoque')">Abrir Estoque</button></div></li>
-          <li><div>Em <b>Suprimentos</b>, registre o consumo de 120 m² de porcelanato no serviço "Revestimento cerâmico".<br><button class="ghost" onclick="irPara('suprimentos')">Abrir Suprimentos</button></div></li>
+          <li><div>Em <b>Estoque → Notas fiscais</b>, lance uma nota: 300 m² do insumo de piso porcelanato a R$ 62,00, fornecedor Cerâmica Costa do Sol, para o serviço "Piso porcelanato". Depois veja o saldo subir em <b>Saldo de estoque</b>.<br><button class="ghost" onclick="irPara('notas','nf-formbox')">Abrir Notas fiscais</button></div></li>
+          <li><div>Em <b>Estoque → Baixa de estoque</b>, baixe 120 m² de porcelanato para o serviço "Piso porcelanato". Aí o valor vira gasto dele.<br><button class="ghost" onclick="irPara('baixa','form-baixa')">Abrir Baixa de estoque</button></div></li>
           <li><div>Em <b>Contratos & Medições</b>, aprove a medição pendente da Elétrica Santos.<br><button class="ghost" onclick="irPara('contratos')">Abrir Contratos</button></div></li>
           <li><div>No <b>Financeiro</b>, marque um pagamento como pago. Depois volte ao Painel: a régua do Acabamento e da Instalação elétrica mudou.<br><button class="ghost" onclick="irPara('financeiro')">Abrir Financeiro</button></div></li>
         </ol>
@@ -1624,12 +1625,12 @@ function renderOrcamento(){
                     ${orig.length ? `<button class="link" onclick="toggleOrigem(${i.id})">${aberto?'esconder origem':'ver origem ('+orig.length+')'}</button>` : '<span class="mono" style="font-size:11px;color:var(--concrete);">nada lançado ainda</span>'}</td>
                   <td class="acoes"><button class="link" onclick="abrirItem(${i.id})">editar</button>${itemTemVinculo(i.id) ? '' : `<button class="link del" onclick="excluirItem(${i.id})">excluir</button>`}</td>
                 </tr>
-                ${insAb ? `<tr class="origem-row"><td colspan="8">${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th class="num">Coef.</th><th class="num">Previsto</th><th class="num">Já usado</th><th class="num">Preço (orçado)</th><th class="num">Custo previsto</th></tr></thead><tbody>
+                ${insAb ? `<tr class="origem-row"><td colspan="8">${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th class="num">Coef.</th><th class="num">Previsto</th><th class="num">Comprado (notas)</th><th class="num">Já baixado</th><th class="num">Preço (orçado)</th><th class="num">Custo previsto</th></tr></thead><tbody>
                   ${i.insumos.map(p=>{ const x = insumoPor(p.insumoId), prev = p.coef*i.qtd, usado = usadoDoInsumo(i.id, p.insumoId);
                     return `<tr><td><span class="codigo">${x?esc(x.codigo):''}</span> ${x?esc(x.descricao):'insumo excluído'}</td><td class="num">${fmtCoef(p.coef)}</td>
-                      <td class="num">${fmtNum(prev)} ${x?esc(x.unidade):''}</td><td class="num ${usado>prev?'over':''}">${x && x.tipo==='material' ? fmtNum(usado)+(usado>prev?' ▲':'') : '—'}</td>
+                      <td class="num">${fmtNum(prev)} ${x?esc(x.unidade):''}</td><td class="num">${x && x.tipo==='material' ? fmtNum(compradoDoInsumo(i.id, p.insumoId)) : '—'}</td><td class="num ${usado>prev?'over':''}">${x && x.tipo==='material' ? fmtNum(usado)+(usado>prev?' ▲':'') : '—'}</td>
                       <td class="num">${fmtMoney(p.preco)}</td><td class="num">${fmtMoney(p.preco*prev)}</td></tr>`; }).join('')}
-                  </tbody></table>`)}<p class="helptext" style="margin:6px 0 0;">"Já usado" soma o material que saiu do estoque para este serviço (Suprimentos → Registrar uso). Mão de obra é acompanhada pelas medições.</p></td></tr>` : ''}
+                  </tbody></table>`)}<p class="helptext" style="margin:6px 0 0;">"Comprado" soma o que foi lançado em nota fiscal para este serviço. "Já baixado" soma o material que saiu do estoque para ele (Estoque → Baixa de estoque) e é o que vale como gasto. Mão de obra é acompanhada pelas medições.</p></td></tr>` : ''}
                 ${aberto && orig.length ? `<tr class="origem-row"><td colspan="8"><div class="origem-list">${orig.map(o=>`<div><span class="mono">${fmtDate(o.data)}</span><span>${o.tipo}: ${o.desc}</span><b>${fmtMoney(o.valor)}</b></div>`).join('')}</div></td></tr>` : ''}`;
               }).join('')}
             </tbody>
@@ -1788,89 +1789,27 @@ function importarOrcamento(evt){
 
 /* ---------------------- SUPRIMENTOS ---------------------- */
 function renderSuprimentos(){
-  const comSaldo = state.materiais.filter(m=>m.saldo>0);
-  const podeLancar = state.orcamento.length && comSaldo.length;
   return `
     <h2 class="section-title">Suprimentos</h2>
-    <p class="section-sub">Uso de material nos serviços · fornecedores</p>
-    ${intro('suprimentos','Para que serve esta tela', `<p>Quando alguém retira material do estoque para usar em um serviço, registre aqui o ${t('consumo','consumo')}. Ex.: "usei 120 m² de porcelanato no Revestimento cerâmico".</p><p>O valor é calculado pelo ${t('customedio','custo médio')} do material. Para ter o que consumir, antes o material precisa ter entrado pelo Estoque (nota fiscal).</p>`,
-      'o saldo do material diminui no Estoque e o valor é somado ao realizado do serviço escolhido no Orçamento.')}
+    <p class="section-sub">Fornecedores</p>
+    ${intro('suprimentos','Para que serve esta tela', `<p>Cadastre aqui os fornecedores de quem você compra. Eles aparecem na hora de lançar uma ${t('nf','nota fiscal')}.</p><p>O material entra no estoque pela <button class="link" onclick="irPara('notas')">nota fiscal</button> e sai pela <button class="link" onclick="irPara('baixa')">baixa de estoque</button>.</p>`,
+      'cada fornecedor cadastrado fica disponível na lista de fornecedores do lançamento de notas.')}
 
-    <div class="grid grid-2">
-      <div class="card" id="sec-uso">
-        <h3>Material usado por serviço</h3>
-        ${state.pedidos.length ? tbl(`<table><thead><tr><th>Data</th><th>Serviço</th><th>Material</th><th class="num">Qtd. usada</th><th class="num">Valor</th></tr></thead><tbody>
-          ${state.pedidos.slice().reverse().map(p=>{
-            const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
-            const mat = state.materiais.find(m=>m.id===p.materialId);
-            return `<tr><td class="mono">${fmtDate(p.data)}</td><td>${item?esc(item.etapa+' · '+item.servico):'<span class="mono" style="color:var(--concrete)">serviço removido</span>'}</td><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(p.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(p.valor)}</td></tr>`;
-          }).join('')}
-        </tbody></table>`) : '<div class="empty">Nenhum consumo registrado ainda.</div>'}
-
-        <details class="formbox" id="form-uso" ${podeLancar && !state.pedidos.length ? 'open':''}>
-          <summary>Registrar uso de material</summary>
-          ${!state.orcamento.length ? `<p class="formhint">Primeiro cadastre pelo menos um serviço no Orçamento. <button class="link" onclick="irPara('orcamento')">Ir para Orçamento</button></p>`
-            : !comSaldo.length ? `<p class="formhint">Nenhum material tem saldo no estoque. Lance uma nota fiscal de entrada primeiro. <button class="link" onclick="irPara('estoque')">Ir para Estoque</button></p>`
-            : `<div class="formgrid">
-            <div><label for="f-cons-item">Em qual serviço foi usado</label><select id="f-cons-item" onchange="atualizarDicaConsumo()">${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select></div>
-            <div><label for="f-cons-mat">Material</label><select id="f-cons-mat" onchange="atualizarDicaConsumo()">${comSaldo.map(m=>`<option value="${m.id}">${esc(m.nome)} (tem ${fmtNum(m.saldo)} ${esc(m.unidade)})</option>`).join('')}</select></div>
-            <div><label for="f-cons-qtd">Quantidade usada</label><input id="f-cons-qtd" type="number" step="0.01" inputmode="decimal" oninput="atualizarDicaConsumo()"></div>
-            <div><label for="f-cons-data">Data</label><input id="f-cons-data" type="date" value="${todayStr()}"></div>
-          </div>
-          <p class="formhint" id="dica-consumo"></p>
-          <div class="form-actions"><button class="primary" onclick="handleConsumo()">Registrar uso</button></div>`}
-        </details>
-      </div>
-
-      <div class="card" id="sec-forn">
-        <h3>Fornecedores</h3>
-        ${state.fornecedores.length ? tbl(`<table><thead><tr><th>Nome</th><th>Contato</th></tr></thead><tbody>
-          ${state.fornecedores.map(f=>`<tr><td>${esc(f.nome)}</td><td class="mono">${esc(f.contato)}</td></tr>`).join('')}
-        </tbody></table>`) : '<div class="empty">Nenhum fornecedor cadastrado.</div>'}
-        <details class="formbox" id="form-forn">
-          <summary>Cadastrar fornecedor</summary>
-          <div class="formgrid">
-            <div><label for="f-forn-nome">Nome</label><input id="f-forn-nome"></div>
-            <div><label for="f-forn-contato">Telefone ou e-mail</label><input id="f-forn-contato"></div>
-          </div>
-          <div class="form-actions"><button class="primary" onclick="handleAddFornecedor()">Cadastrar</button></div>
-        </details>
-      </div>
+    <div class="card" id="sec-forn">
+      <h3>Fornecedores</h3>
+      ${state.fornecedores.length ? tbl(`<table><thead><tr><th>Nome</th><th>Contato</th></tr></thead><tbody>
+        ${state.fornecedores.map(f=>`<tr><td>${esc(f.nome)}</td><td class="mono">${esc(f.contato)}</td></tr>`).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhum fornecedor cadastrado.</div>'}
+      <details class="formbox" id="form-forn">
+        <summary>Cadastrar fornecedor</summary>
+        <div class="formgrid">
+          <div><label for="f-forn-nome">Nome</label><input id="f-forn-nome"></div>
+          <div><label for="f-forn-contato">Telefone ou e-mail</label><input id="f-forn-contato"></div>
+        </div>
+        <div class="form-actions"><button class="primary" onclick="handleAddFornecedor()">Cadastrar</button></div>
+      </details>
     </div>
   `;
-}
-
-/* Mostra o previsto pela composição para o material escolhido naquele serviço */
-function atualizarDicaConsumo(){
-  const el = document.getElementById('dica-consumo'); if(!el) return;
-  const item = state.orcamento.find(i=>i.id===parseInt(val('f-cons-item')));
-  const mat = state.materiais.find(m=>m.id===parseInt(val('f-cons-mat')));
-  if(!item || !mat){ el.innerHTML = ''; return; }
-  const prev = mat.insumoId ? item.insumos.find(p=>p.insumoId===mat.insumoId) : null;
-  if(!prev){ el.innerHTML = item.insumos.length ? `Esse material não está previsto na composição de "${esc(item.servico)}". Confira se o serviço está certo.` : ''; return; }
-  const previsto = prev.coef*item.qtd, usado = usadoDoInsumo(item.id, mat.insumoId), agora = parseFloat(val('f-cons-qtd'))||0;
-  const total = usado + agora;
-  el.innerHTML = `Previsto para este serviço: <b>${fmtNum(previsto)} ${esc(mat.unidade)}</b> · já usado: ${fmtNum(usado)}${agora?` · com este lançamento: <b class="${total>previsto?'over':''}">${fmtNum(total)}</b>${total>previsto?' (acima do previsto)':''}`:''}`;
-}
-
-function handleConsumo(){
-  const orcamentoItemId = parseInt(val('f-cons-item')), materialId = parseInt(val('f-cons-mat'));
-  const qtd = parseFloat(val('f-cons-qtd')), data = val('f-cons-data');
-  if(!orcamentoItemId || !materialId || !data){ erro('Escolha o serviço, o material e a data.'); return; }
-  if(!(qtd>0)){ erro('Informe a quantidade usada (maior que zero).'); return; }
-  const mat = state.materiais.find(m=>m.id===materialId);
-  const item = state.orcamento.find(i=>i.id===orcamentoItemId);
-  const executar = async (parcial)=>{
-    const r = await api('POST', '/api/consumos', {orcamentoItemId, materialId, qtd, data, aceitarParcial: !!parcial});
-    if(!r) return;
-    const m2 = state.materiais.find(m=>m.id===materialId);
-    toast('ok','Uso registrado', `<ul><li>Estoque de ${esc(m2.nome)}: agora ${fmtNum(m2.saldo)} ${esc(m2.unidade)}</li><li>${fmtMoney(r.valor)} somados ao realizado de "${esc(item.servico)}"</li></ul>`);
-  };
-  if(mat.saldo < qtd){
-    confirmar('Estoque insuficiente', `Você pediu ${fmtNum(qtd)} ${mat.unidade}, mas o estoque tem só ${fmtNum(mat.saldo)} ${mat.unidade}. Se a quantidade está certa, falta lançar alguma nota fiscal. Quer registrar só o que há no estoque?`, `Registrar ${fmtNum(mat.saldo)} ${mat.unidade}`, ()=>executar(true));
-    return;
-  }
-  executar(false);
 }
 
 async function handleAddFornecedor(){
@@ -1882,95 +1821,131 @@ async function handleAddFornecedor(){
   toast('ok','Fornecedor cadastrado', `<div>${esc(nome)} já aparece na hora de lançar notas fiscais.</div>`);
 }
 
-/* ---------------------- ESTOQUE ---------------------- */
-const novoNfDraft = () => ({numero:'', fornecedorId: state.fornecedores[0] ? state.fornecedores[0].id : null, data: todayStr(), itens:[]});
+/* ---------------------- ESTOQUE: saldo · notas fiscais · baixa ---------------------- */
+const novoNfDraft = () => ({numero:'', tipo:'nota_fiscal', fornecedorId: state.fornecedores[0] ? state.fornecedores[0].id : null, data: todayStr(), itens:[]});
 let nfDraft;
+let nfFiltro = {forn:'', serv:''};
+const nomeServico = i => i ? i.etapa+' · '+i.servico : null;
+const tipoBaixaNome = id => ((state.tiposBaixa||[]).find(x=>x.id===id)||{nome:id}).nome;
+const tipoDocNome = id => ((state.tiposDocumento||[]).find(x=>x.id===id)||{nome:'Nota fiscal'}).nome;
 
+/* Quantidade de um insumo já comprada (em notas) para um serviço: é o "comprado", não o gasto */
+function compradoDoInsumo(itemId, insumoId){
+  const mats = new Set(state.materiais.filter(m=>m.insumoId===insumoId).map(m=>m.id));
+  return state.notasFiscais.reduce((s,nf)=>s+nf.itens.filter(it=>it.orcamentoItemId===itemId && mats.has(it.materialId)).reduce((a,it)=>a+it.qtd,0),0);
+}
+const compradoValorDoItem = itemId => state.notasFiscais.reduce((s,nf)=>s+nf.itens.filter(it=>it.orcamentoItemId===itemId).reduce((a,it)=>a+it.qtd*it.valorUnit,0),0);
+const gastoMaterialDoItem = itemId => state.pedidos.filter(p=>p.tipo==='servico' && p.orcamentoItemId===itemId).reduce((s,p)=>s+p.valor,0);
+
+/* 1. Saldo de estoque: consulta rápida */
 function renderEstoque(){
-  const opcoesMateriais = state.materiais.map(m=>`<option value="${m.id}">${esc(m.nome)} (${esc(m.unidade)})</option>`).join('');
-  const totalDraft = nfDraft.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
+  const mats = state.materiais;
   return `
-    <h2 class="section-title">Estoque de Materiais</h2>
-    <p class="section-sub">Entrada por nota fiscal · saída pelo uso nos serviços</p>
-    ${intro('estoque','Para que serve esta tela', `<p>Quando um material chega na obra, lance a ${t('nf','nota fiscal')} aqui. Uma nota pode ter vários itens. O material passa a ter ${t('estoque','saldo')} e um ${t('customedio','custo médio')}.</p><p>Material no estoque ainda não é gasto de nenhum serviço. Ele só vira gasto quando alguém registra o uso em Suprimentos.</p>`,
-      'ao salvar a nota, o saldo sobe, o custo médio é recalculado e um pagamento ao fornecedor é programado no Financeiro.')}
-
-    <div class="card" style="margin-bottom:18px;" id="sec-saldo">
-      <h3>Saldo atual por material</h3>
-      ${state.materiais.length ? tbl(`<table><thead><tr><th>Código</th><th>Material</th><th>Unid.</th><th class="num">Saldo</th><th class="num">Custo médio</th><th class="num">Valor parado</th></tr></thead><tbody>
-        ${state.materiais.map(m=>`<tr>
-          <td class="codigo">${(insumoPor(m.insumoId)||{}).codigo ? esc(insumoPor(m.insumoId).codigo) : '—'}</td><td>${esc(m.nome)}</td><td class="mono">${esc(m.unidade)}</td>
+    <h2 class="section-title">Saldo de estoque</h2>
+    <p class="section-sub">O que está guardado na obra, por material</p>
+    ${intro('estoque','Para que serve esta tela', `<p>Aqui você vê rápido quanto há de cada material e quanto dinheiro está parado. Não se digita nada nesta tela de propósito: o saldo sobe só com ${t('nf','nota fiscal')} (ou outro documento de entrada) e desce só pela ${t('baixa','baixa de estoque')}.</p><p>Material em estoque ainda não é gasto de nenhum serviço. Ele vira gasto quando é baixado para um serviço.</p>`,
+      'a nota fiscal faz o saldo subir e recalcula o custo médio; a baixa faz o saldo descer.')}
+    <div class="card" id="sec-saldo">
+      <div class="card-flex-head"><h3>Saldo atual por material</h3>
+        <div class="form-actions" style="margin:0;"><button class="ghost" onclick="irPara('notas','nf-formbox')">Lançar nota fiscal</button><button class="ghost" onclick="irPara('baixa','form-baixa')">Baixar estoque</button></div></div>
+      ${mats.length ? `<input type="search" id="busca-saldo" placeholder="Buscar material ou código" aria-label="Buscar material" style="max-width:320px;margin:6px 0 10px;" oninput="filtrarLinhas('tb-saldo', this.value)">
+        ${tbl(`<table><thead><tr><th>Código</th><th>Material</th><th>Unid.</th><th class="num">Saldo</th><th class="num">Custo médio</th><th class="num">Valor parado</th></tr></thead><tbody id="tb-saldo">
+        ${mats.map(m=>{ const x = insumoPor(m.insumoId);
+          return `<tr data-busca="${esc(norm((x?x.codigo:'')+' '+m.nome))}">
+          <td class="codigo">${x ? esc(x.codigo) : '—'}</td><td>${esc(m.nome)}</td><td class="mono">${esc(m.unidade)}</td>
           <td class="num">${m.saldo>0 ? fmtNum(m.saldo) : pill('sem saldo','neutral')}</td>
           <td class="num">${m.custoMedio ? fmtMoney(m.custoMedio) : '—'}</td>
           <td class="num">${fmtMoney(m.saldo*m.custoMedio)}</td>
-        </tr>`).join('')}
-      </tbody></table>`) : '<div class="empty">Nenhum material no estoque ainda. Coloque um material abaixo antes de lançar notas.</div>'}
-      <details class="formbox" id="form-mat" ${state.materiais.length?'':'open'}>
-        <summary>Colocar material no estoque</summary>
-        ${(()=>{ const jaTem = new Set(state.materiais.map(m=>m.insumoId).filter(Boolean));
-          const lista = (state.insumos||[]).filter(i=>i.tipo==='material' && !jaTem.has(i.id));
-          return lista.length ? `<p class="formhint">Escolha o insumo do cadastro. Ele entra com saldo zero; o saldo sobe quando você lança a nota fiscal.</p>
-          <div class="formgrid"><div style="grid-column:span 2;"><label for="f-mat-ins">Insumo (material)</label><select id="f-mat-ins">${lista.map(i=>`<option value="${i.id}">${esc(i.codigo+' · '+i.descricao+' ('+i.unidade+')')}</option>`).join('')}</select></div></div>
-          <div class="form-actions"><button class="primary" onclick="handleAddMaterial()">Colocar no estoque</button><button class="link" onclick="irPara('cadastros','sec-ins');abrirInsumo()">o material não está na lista? cadastrar insumo</button></div>`
-          : `<p class="formhint">Todos os materiais do cadastro já estão no estoque. <button class="link" onclick="irPara('cadastros','sec-ins');abrirInsumo()">Cadastrar novo insumo</button></p>`; })()}
-      </details>
-    </div>
-
-    <div class="card" id="sec-nfs">
-      <h3>Notas fiscais de entrada</h3>
-      <details class="formbox" id="nf-formbox" style="margin:0 0 16px;" ${nfDraft.itens.length || !state.notasFiscais.length ? 'open' : ''}>
-        <summary>Lançar nota fiscal que chegou</summary>
-        ${!state.fornecedores.length || !state.materiais.length ? `<p class="formhint">Para lançar uma nota, cadastre antes ${!state.fornecedores.length?'um fornecedor (em Suprimentos)':''}${!state.fornecedores.length && !state.materiais.length?' e ':''}${!state.materiais.length?'um material (acima)':''}.</p>` : `
-        <p class="formhint">1. Preencha o cabeçalho da nota. 2. Adicione cada item com "+ item". 3. Salve.</p>
-        <div class="formgrid">
-          <div><label for="f-nf-numero">Número da nota</label><input id="f-nf-numero" placeholder="Ex: NF-4587" value="${esc(nfDraft.numero)}" oninput="nfDraft.numero=this.value"></div>
-          <div><label for="f-nf-forn">Fornecedor</label><select id="f-nf-forn" onchange="nfDraft.fornecedorId=parseInt(this.value)">${state.fornecedores.map(f=>`<option value="${f.id}" ${nfDraft.fornecedorId===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></div>
-          <div><label for="f-nf-data">Data de vencimento do pagamento</label><input id="f-nf-data" type="date" value="${esc(nfDraft.data)}" onchange="nfDraft.data=this.value"></div>
-        </div>
-        <div class="formgrid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));align-items:end;">
-          <div><label for="f-nf-item-mat">Material</label><select id="f-nf-item-mat">${opcoesMateriais}</select></div>
-          <div><label for="f-nf-item-qtd">Quantidade</label><input id="f-nf-item-qtd" type="number" step="0.01" inputmode="decimal"></div>
-          <div><label for="f-nf-item-valor">Valor unitário (R$)</label><input id="f-nf-item-valor" type="number" step="0.01" inputmode="decimal"></div>
-          <div><button class="ghost" style="width:100%;padding:9px 12px;" onclick="handleAddItemNFDraft()">+ item</button></div>
-        </div>
-        ${nfDraft.itens.length ? `<div style="padding:0 14px;">${tbl(`<table class="nf-draft-table"><thead><tr><th>Material</th><th class="num">Qtd.</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead><tbody>
-          ${nfDraft.itens.map((it,idx)=>{ const mat = state.materiais.find(m=>m.id===it.materialId);
-            return `<tr><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(it.qtd)}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td><td class="num"><button class="link del" onclick="handleRemoveItemNFDraft(${idx})">remover</button></td></tr>`; }).join('')}
-        </tbody></table>`)}</div>
-        <div class="form-actions"><button class="primary" onclick="handleSalvarNFDraft()">Salvar nota (${nfDraft.itens.length} ${nfDraft.itens.length===1?'item':'itens'} · ${fmtMoney(totalDraft)})</button></div>
-        ` : '<p class="formhint">Nenhum item adicionado ainda.</p>'}`}
-      </details>
-
-      ${state.notasFiscais.length ? state.notasFiscais.slice().reverse().map(nf=>{
-        const forn = state.fornecedores.find(f=>f.id===nf.fornecedorId);
-        const total = nf.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
-        return `<div style="border:1px solid var(--line);border-radius:4px;padding:10px 14px;margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--concrete);margin-bottom:6px;">
-            <span><b style="color:var(--ink);">${esc(nf.numero)}</b> · ${forn?esc(forn.nome):'—'} · ${fmtDate(nf.data)}</span>
-            <span>${fmtMoney(total)}</span>
-          </div>
-          ${tbl(`<table><tbody>
-          ${nf.itens.map(it=>{ const mat = state.materiais.find(m=>m.id===it.materialId); return `<tr><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(it.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td></tr>`; }).join('')}
-          </tbody></table>`)}
-        </div>`;
-      }).join('') : '<div class="empty">Nenhuma nota fiscal lançada ainda.</div>'}
+        </tr>`; }).join('')}
+      </tbody></table>`)}` : '<div class="empty">Nenhum material no estoque ainda. O material entra no estoque pela nota fiscal: <button class="link" onclick="irPara(\'notas\',\'nf-formbox\')">lançar nota fiscal</button>.</div>'}
     </div>
   `;
 }
 
-async function handleAddMaterial(){
-  const ins = insumoPor(parseInt(val('f-mat-ins')));
-  if(!ins){ erro('Escolha o insumo.'); return; }
-  if(await api('POST', '/api/materiais', {insumoId: ins.id})) toast('ok','Material no estoque', `<div>${esc(ins.descricao)} começa com saldo zero. Lance uma nota fiscal para dar entrada.</div>`);
+/* 2. Notas fiscais: lançar e consultar */
+function renderNotas(){
+  const insumosMat = (state.insumos||[]).filter(i=>i.tipo==='material');
+  const opcoesIns = insumosMat.map(i=>`<option value="${i.id}">${esc(i.codigo+' · '+i.descricao+' ('+i.unidade+')')}</option>`).join('');
+  const opcoesServ = `<option value="">Estoque geral (sem serviço)</option>` + state.orcamento.map(i=>`<option value="${i.id}">${esc(nomeServico(i))}</option>`).join('');
+  const totalDraft = nfDraft.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
+  const notas = state.notasFiscais.filter(nf=>(!nfFiltro.forn || String(nf.fornecedorId)===nfFiltro.forn)
+    && (!nfFiltro.serv || nf.itens.some(it=>String(it.orcamentoItemId)===nfFiltro.serv)));
+  const porServico = state.orcamento.map(i=>({i, comp:compradoValorDoItem(i.id), gasto:gastoMaterialDoItem(i.id)})).filter(x=>x.comp>0 || x.gasto>0);
+  return `
+    <h2 class="section-title">Notas fiscais</h2>
+    <p class="section-sub">Entrada de material: lance e consulte as notas</p>
+    ${intro('notas','Para que serve esta tela', `<p>Toda entrada de material passa por aqui: ${t('nf','nota fiscal')}, recibo, fatura ou outro documento que será pago. Escolha o <b>insumo</b> de cada item e, se já souber, o <b>serviço</b> do orçamento para o qual a compra foi feita.</p><p>O serviço informado diz "comprado para". O gasto do serviço só acontece quando o material é baixado do estoque para ele.</p>`,
+      'o material entra no estoque, o custo médio é recalculado e o pagamento ao fornecedor é programado no Financeiro.')}
+
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Lançar nota fiscal</h3>
+      <details class="formbox" id="nf-formbox" style="margin:0 0 4px;" ${nfDraft.itens.length || !state.notasFiscais.length ? 'open' : ''}>
+        <summary>Lançar documento de entrada</summary>
+        ${!state.fornecedores.length || !insumosMat.length ? `<p class="formhint">Para lançar, cadastre antes ${!state.fornecedores.length?'um fornecedor (em <button class="link" onclick="irPara(\'suprimentos\',\'form-forn\')">Suprimentos</button>)':''}${!state.fornecedores.length && !insumosMat.length?' e ':''}${!insumosMat.length?'um insumo do tipo material (em <button class="link" onclick="irPara(\'cadastros\',\'sec-ins\')">Cadastros</button>)':''}.</p>` : `
+        <p class="formhint">1. Preencha o cabeçalho. 2. Adicione cada item com "+ item". 3. Salve.</p>
+        <div class="formgrid">
+          <div><label for="f-nf-tipo">Tipo de documento</label><select id="f-nf-tipo" onchange="nfDraft.tipo=this.value">${(state.tiposDocumento||[]).map(x=>`<option value="${x.id}" ${nfDraft.tipo===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>
+          <div><label for="f-nf-numero">Número</label><input id="f-nf-numero" placeholder="Ex: NF-4587" value="${esc(nfDraft.numero)}" oninput="nfDraft.numero=this.value"></div>
+          <div><label for="f-nf-forn">Fornecedor</label><select id="f-nf-forn" onchange="nfDraft.fornecedorId=parseInt(this.value)">${state.fornecedores.map(f=>`<option value="${f.id}" ${nfDraft.fornecedorId===f.id?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></div>
+          <div><label for="f-nf-data">Vencimento do pagamento</label><input id="f-nf-data" type="date" value="${esc(nfDraft.data)}" onchange="nfDraft.data=this.value"></div>
+        </div>
+        <div class="formgrid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;">
+          <div style="grid-column:span 2;"><label for="f-nf-item-ins">Insumo (material)</label><select id="f-nf-item-ins">${opcoesIns}</select></div>
+          <div style="grid-column:span 2;"><label for="f-nf-item-serv">Comprado para o serviço</label><select id="f-nf-item-serv">${opcoesServ}</select></div>
+          <div><label for="f-nf-item-qtd">Quantidade</label><input id="f-nf-item-qtd" type="number" step="0.01" inputmode="decimal"></div>
+          <div><label for="f-nf-item-valor">Valor unitário (R$)</label><input id="f-nf-item-valor" type="number" step="0.01" inputmode="decimal"></div>
+          <div><button class="ghost" style="width:100%;padding:9px 12px;" onclick="handleAddItemNFDraft()">+ item</button></div>
+        </div>
+        ${nfDraft.itens.length ? `<div style="padding:0 14px;">${tbl(`<table class="nf-draft-table"><thead><tr><th>Insumo</th><th>Serviço</th><th class="num">Qtd.</th><th class="num">Valor unit.</th><th class="num">Total</th><th></th></tr></thead><tbody>
+          ${nfDraft.itens.map((it,idx)=>{ const ins = insumoPor(it.insumoId), sv = state.orcamento.find(i=>i.id===it.orcamentoItemId);
+            return `<tr><td>${ins?esc(ins.descricao):'—'}</td><td>${sv?esc(nomeServico(sv)):'<span class="mono" style="color:var(--concrete)">estoque geral</span>'}</td><td class="num">${fmtNum(it.qtd)}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td><td class="num"><button class="link del" onclick="handleRemoveItemNFDraft(${idx})">remover</button></td></tr>`; }).join('')}
+        </tbody></table>`)}</div>
+        <div class="form-actions"><button class="primary" onclick="handleSalvarNFDraft()">Salvar (${nfDraft.itens.length} ${nfDraft.itens.length===1?'item':'itens'} · ${fmtMoney(totalDraft)})</button></div>
+        ` : '<p class="formhint">Nenhum item adicionado ainda.</p>'}`}
+      </details>
+    </div>
+
+    ${porServico.length ? `<div class="card" style="margin-bottom:18px;" id="sec-nf-servico">
+      <h3>Por serviço: comprado e gasto</h3>
+      <p class="helptext" style="margin-top:0;"><b>Comprado</b> é o valor das notas feitas para o serviço. <b>Gasto em material</b> é o que já saiu do estoque para ele (a custo médio). Os dois não se somam: o gasto é o que vale para o realizado.</p>
+      ${tbl(`<table><thead><tr><th>Serviço</th><th class="num">Comprado em notas</th><th class="num">Gasto em material</th><th class="num">Comprado e ainda não usado</th></tr></thead><tbody>
+        ${porServico.map(x=>`<tr><td>${esc(nomeServico(x.i))}</td><td class="num">${fmtMoney(x.comp)}</td><td class="num">${fmtMoney(x.gasto)}</td><td class="num">${fmtMoney(Math.max(0,x.comp-x.gasto))}</td></tr>`).join('')}
+      </tbody></table>`)}
+    </div>` : ''}
+
+    <div class="card" id="sec-nfs">
+      <div class="card-flex-head" style="flex-wrap:wrap;gap:8px;"><h3>Notas lançadas</h3>
+        <div class="form-actions" style="margin:0;flex-wrap:wrap;max-width:100%;">
+          <select aria-label="Filtrar por fornecedor" style="max-width:100%;" onchange="nfFiltro.forn=this.value;renderAll()"><option value="">Todos os fornecedores</option>${state.fornecedores.map(f=>`<option value="${f.id}" ${nfFiltro.forn===String(f.id)?'selected':''}>${esc(f.nome)}</option>`).join('')}</select>
+          <select aria-label="Filtrar por serviço" style="max-width:100%;" onchange="nfFiltro.serv=this.value;renderAll()"><option value="">Todos os serviços</option>${state.orcamento.map(i=>`<option value="${i.id}" ${nfFiltro.serv===String(i.id)?'selected':''}>${esc(nomeServico(i))}</option>`).join('')}</select>
+        </div></div>
+      ${notas.length ? notas.slice().reverse().map(nf=>{
+        const forn = state.fornecedores.find(f=>f.id===nf.fornecedorId);
+        const total = nf.itens.reduce((s,it)=>s+it.qtd*it.valorUnit,0);
+        return `<div style="border:1px solid var(--line);border-radius:4px;padding:10px 14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;color:var(--concrete);margin-bottom:6px;">
+            <span><b style="color:var(--ink);">${esc(nf.numero)}</b> · ${esc(tipoDocNome(nf.tipo))} · ${forn?esc(forn.nome):'—'} · vence ${fmtDate(nf.data)}</span>
+            <span>${fmtMoney(total)}</span>
+          </div>
+          ${tbl(`<table><thead><tr><th>Material</th><th>Comprado para</th><th class="num">Qtd.</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead><tbody>
+          ${nf.itens.map(it=>{ const mat = state.materiais.find(m=>m.id===it.materialId), sv = state.orcamento.find(i=>i.id===it.orcamentoItemId);
+            return `<tr><td>${mat?esc(mat.nome):'—'}</td><td>${sv?esc(nomeServico(sv)):'<span class="mono" style="color:var(--concrete)">estoque geral</span>'}</td><td class="num">${fmtNum(it.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(it.valorUnit)}</td><td class="num">${fmtMoney(it.qtd*it.valorUnit)}</td></tr>`; }).join('')}
+          </tbody></table>`)}
+        </div>`;
+      }).join('') : `<div class="empty">${state.notasFiscais.length ? 'Nenhuma nota com esse filtro.' : 'Nenhuma nota lançada ainda.'}</div>`}
+    </div>
+  `;
 }
 
 function handleAddItemNFDraft(){
-  const materialId = parseInt(val('f-nf-item-mat')), qtd = parseFloat(val('f-nf-item-qtd')), valorUnit = parseFloat(val('f-nf-item-valor'));
-  if(!materialId){ erro('Escolha o material.'); return; }
+  const insumoId = parseInt(val('f-nf-item-ins')), qtd = parseFloat(val('f-nf-item-qtd')), valorUnit = parseFloat(val('f-nf-item-valor'));
+  const orcamentoItemId = parseInt(val('f-nf-item-serv')) || null;
+  if(!insumoId){ erro('Escolha o insumo.'); return; }
   if(!(qtd>0) || !(valorUnit>0)){ erro('Quantidade e valor unitário precisam ser maiores que zero.'); return; }
   nfDraft.numero = val('f-nf-numero'); nfDraft.data = val('f-nf-data') || nfDraft.data;
+  nfDraft.tipo = val('f-nf-tipo') || nfDraft.tipo;
   nfDraft.fornecedorId = parseInt(val('f-nf-forn')) || nfDraft.fornecedorId;
-  nfDraft.itens.push({materialId, qtd, valorUnit});
+  nfDraft.itens.push({insumoId, orcamentoItemId, qtd, valorUnit});
   renderAll();
   const q = document.getElementById('f-nf-item-qtd'); if(q) q.focus();
 }
@@ -1978,17 +1953,102 @@ function handleRemoveItemNFDraft(idx){ nfDraft.itens.splice(idx,1); renderAll();
 
 async function handleSalvarNFDraft(){
   nfDraft.numero = val('f-nf-numero'); nfDraft.data = val('f-nf-data') || nfDraft.data;
+  nfDraft.tipo = val('f-nf-tipo') || nfDraft.tipo;
   nfDraft.fornecedorId = parseInt(val('f-nf-forn')) || nfDraft.fornecedorId;
-  if(!nfDraft.numero.trim()){ erro('Informe o número da nota fiscal.'); return; }
+  if(!nfDraft.numero.trim()){ erro('Informe o número do documento.'); return; }
   if(!nfDraft.fornecedorId){ erro('Escolha o fornecedor.'); return; }
   if(!nfDraft.itens.length){ erro('Adicione pelo menos um item com "+ item".'); return; }
   const forn = state.fornecedores.find(f=>f.id===nfDraft.fornecedorId);
   const n = nfDraft.itens.length;
-  const r = await api('POST', '/api/notas', {fornecedorId: nfDraft.fornecedorId, numero: nfDraft.numero.trim(), data: nfDraft.data, itens: nfDraft.itens});
+  const r = await api('POST', '/api/notas', {fornecedorId: nfDraft.fornecedorId, tipo: nfDraft.tipo, numero: nfDraft.numero.trim(), data: nfDraft.data, itens: nfDraft.itens});
   if(!r) return;
   nfDraft = novoNfDraft();
   renderAll();
-  toast('ok', 'Nota fiscal lançada', `<ul><li>${n} ${n===1?'material entrou':'materiais entraram'} no estoque</li><li>Pagamento de ${fmtMoney(r.total)} a ${forn?esc(forn.nome):'fornecedor'} programado no Financeiro</li><li>Para virar gasto de um serviço, registre o uso em Suprimentos</li></ul>`);
+  const av = (r.avisos||[]).map(a=>`<li>⚠ ${esc(a)}</li>`).join('');
+  toast('ok', 'Documento lançado', `<ul><li>${n} ${n===1?'material entrou':'materiais entraram'} no estoque</li><li>Pagamento de ${fmtMoney(r.total)} a ${forn?esc(forn.nome):'fornecedor'} programado no Financeiro</li><li>Para virar gasto de um serviço, baixe o material em Estoque → Baixa de estoque</li>${av}</ul>`);
+}
+
+/* 3. Baixa de estoque: consumo em serviço, perda, quebra, ajuste, devolução */
+function baixaTipoMudou(){
+  const serv = val('f-cons-tipo')==='servico';
+  const a = document.getElementById('wrap-cons-serv'), b = document.getElementById('wrap-cons-motivo');
+  if(a) a.hidden = !serv; if(b) b.hidden = serv;
+  atualizarDicaConsumo();
+}
+
+function renderBaixa(){
+  const comSaldo = state.materiais.filter(m=>m.saldo>0);
+  const podeLancar = comSaldo.length;
+  return `
+    <h2 class="section-title">Baixa de estoque</h2>
+    <p class="section-sub">Registre o que saiu do estoque: uso nos serviços, perdas e ajustes</p>
+    ${intro('baixa','Para que serve esta tela', `<p>A ${t('baixa','baixa de estoque')} é onde você registra o ${t('consumo','consumo')}: "usei 120 m² de porcelanato no Revestimento cerâmico". O valor é calculado pelo ${t('customedio','custo médio')} e entra no realizado do serviço.</p><p>Também é aqui que se ajusta o estoque quando algo foi perdido, quebrado ou devolvido: escolha o tipo e descreva o motivo. Essas baixas reduzem o saldo, mas não contam como gasto de nenhum serviço.</p><p>O saldo nunca sobe aqui. Se faltou material no sistema, lance o documento de entrada em <button class="link" onclick="irPara('notas','nf-formbox')">Notas fiscais</button>.</p>`,
+      'o saldo do material diminui e, no caso de uso em serviço, o valor é somado ao realizado do serviço escolhido.')}
+
+    <div class="card" id="sec-baixas">
+      <h3>Baixas registradas</h3>
+      ${state.pedidos.length ? tbl(`<table><thead><tr><th>Data</th><th>Tipo</th><th>Serviço ou motivo</th><th>Material</th><th class="num">Qtd. baixada</th><th class="num">Valor</th></tr></thead><tbody>
+        ${state.pedidos.slice().reverse().map(p=>{
+          const item = state.orcamento.find(i=>i.id===p.orcamentoItemId);
+          const mat = state.materiais.find(m=>m.id===p.materialId);
+          const dest = p.tipo==='servico' ? (item?esc(nomeServico(item)):'<span class="mono" style="color:var(--concrete)">serviço removido</span>') : esc(p.observacao||'—');
+          return `<tr><td class="mono">${fmtDate(p.data)}</td><td>${p.tipo==='servico' ? esc(tipoBaixaNome(p.tipo)) : pill(esc(tipoBaixaNome(p.tipo)),'neutral')}</td><td>${dest}</td><td>${mat?esc(mat.nome):'—'}</td><td class="num">${fmtNum(p.qtd)} ${mat?esc(mat.unidade):''}</td><td class="num">${fmtMoney(p.valor)}</td></tr>`;
+        }).join('')}
+      </tbody></table>`) : '<div class="empty">Nenhuma baixa registrada ainda.</div>'}
+
+      <details class="formbox" id="form-baixa" ${podeLancar && !state.pedidos.length ? 'open':''}>
+        <summary>Baixar estoque</summary>
+        ${!comSaldo.length ? `<p class="formhint">Nenhum material tem saldo. O material entra no estoque pela nota fiscal. <button class="link" onclick="irPara('notas','nf-formbox')">Ir para Notas fiscais</button></p>`
+          : `<div class="formgrid">
+          <div><label for="f-cons-tipo">Tipo de baixa</label><select id="f-cons-tipo" onchange="baixaTipoMudou()">${(state.tiposBaixa||[]).map(x=>`<option value="${x.id}">${esc(x.nome)}</option>`).join('')}</select></div>
+          <div id="wrap-cons-serv"><label for="f-cons-item">Em qual serviço foi usado</label>${state.orcamento.length ? `<select id="f-cons-item" onchange="atualizarDicaConsumo()">${state.orcamento.map(i=>`<option value="${i.id}">${esc(nomeServico(i))}</option>`).join('')}</select>` : `<p class="formhint" style="margin:6px 0 0;">Cadastre um serviço no <button class="link" onclick="irPara('orcamento','form-orc')">Orçamento</button>.</p>`}</div>
+          <div id="wrap-cons-motivo" hidden><label for="f-cons-obs">Motivo (obrigatório)</label><input id="f-cons-obs" maxlength="200" placeholder="Ex: blocos quebrados no descarregamento"></div>
+          <div><label for="f-cons-mat">Material</label><select id="f-cons-mat" onchange="atualizarDicaConsumo()">${comSaldo.map(m=>`<option value="${m.id}">${esc(m.nome)} (tem ${fmtNum(m.saldo)} ${esc(m.unidade)})</option>`).join('')}</select></div>
+          <div><label for="f-cons-qtd">Quantidade baixada</label><input id="f-cons-qtd" type="number" step="0.01" inputmode="decimal" oninput="atualizarDicaConsumo()"></div>
+          <div><label for="f-cons-data">Data</label><input id="f-cons-data" type="date" value="${todayStr()}"></div>
+        </div>
+        <p class="formhint" id="dica-consumo"></p>
+        <div class="form-actions"><button class="primary" onclick="handleBaixa()">Registrar baixa</button></div>`}
+      </details>
+    </div>
+  `;
+}
+
+/* Mostra o previsto e o comprado para o material escolhido naquele serviço */
+function atualizarDicaConsumo(){
+  const el = document.getElementById('dica-consumo'); if(!el) return;
+  if(val('f-cons-tipo')!=='servico'){ el.innerHTML = 'Esta baixa reduz o saldo, mas não entra no gasto de nenhum serviço.'; return; }
+  const item = state.orcamento.find(i=>i.id===parseInt(val('f-cons-item')));
+  const mat = state.materiais.find(m=>m.id===parseInt(val('f-cons-mat')));
+  if(!item || !mat){ el.innerHTML = ''; return; }
+  const prev = mat.insumoId ? item.insumos.find(p=>p.insumoId===mat.insumoId) : null;
+  if(!prev){ el.innerHTML = item.insumos.length ? `Esse material não está previsto na composição de "${esc(item.servico)}". Confira se o serviço está certo.` : ''; return; }
+  const previsto = prev.coef*item.qtd, usado = usadoDoInsumo(item.id, mat.insumoId), comprado = compradoDoInsumo(item.id, mat.insumoId), agora = parseFloat(val('f-cons-qtd'))||0;
+  const total = usado + agora;
+  el.innerHTML = `Previsto para este serviço: <b>${fmtNum(previsto)} ${esc(mat.unidade)}</b> · comprado em notas: ${fmtNum(comprado)} · já baixado: ${fmtNum(usado)}${agora?` · com esta baixa: <b class="${total>previsto?'over':''}">${fmtNum(total)}</b>${total>previsto?' (acima do previsto)':''}`:''}`;
+}
+
+function handleBaixa(){
+  const tipo = val('f-cons-tipo') || 'servico';
+  const orcamentoItemId = parseInt(val('f-cons-item')) || null, materialId = parseInt(val('f-cons-mat'));
+  const qtd = parseFloat(val('f-cons-qtd')), data = val('f-cons-data'), observacao = (val('f-cons-obs')||'').trim();
+  if(!materialId || !data){ erro('Escolha o material e a data.'); return; }
+  if(tipo==='servico' && !orcamentoItemId){ erro('Escolha o serviço em que o material foi usado.'); return; }
+  if(tipo!=='servico' && !observacao){ erro('Descreva o motivo da baixa.'); return; }
+  if(!(qtd>0)){ erro('Informe a quantidade baixada (maior que zero).'); return; }
+  const mat = state.materiais.find(m=>m.id===materialId);
+  const item = state.orcamento.find(i=>i.id===orcamentoItemId);
+  const executar = async (parcial)=>{
+    const r = await api('POST', '/api/consumos', {tipo, orcamentoItemId: tipo==='servico' ? orcamentoItemId : null, observacao: tipo==='servico' ? '' : observacao, materialId, qtd, data, aceitarParcial: !!parcial});
+    if(!r) return;
+    const m2 = state.materiais.find(m=>m.id===materialId);
+    toast('ok','Baixa registrada', `<ul><li>Estoque de ${esc(m2.nome)}: agora ${fmtNum(m2.saldo)} ${esc(m2.unidade)}</li>${tipo==='servico' && item ? `<li>${fmtMoney(r.valor)} somados ao realizado de "${esc(item.servico)}"</li>` : `<li>${fmtMoney(r.valor)} baixados como ${esc(tipoBaixaNome(tipo).toLowerCase())} (não entra no gasto de nenhum serviço)</li>`}</ul>`);
+  };
+  if(mat.saldo < qtd){
+    confirmar('Estoque insuficiente', `Você pediu ${fmtNum(qtd)} ${mat.unidade}, mas o estoque tem só ${fmtNum(mat.saldo)} ${mat.unidade}. Se a quantidade está certa, falta lançar algum documento de entrada. Quer baixar só o que há no estoque?`, `Baixar ${fmtNum(mat.saldo)} ${mat.unidade}`, ()=>executar(true));
+    return;
+  }
+  executar(false);
 }
 
 /* ---------------------- CONTRATOS & MEDIÇÕES ---------------------- */
@@ -2231,9 +2291,9 @@ function exportarDadosCompletos(){
   add(Object.entries(state.etapaAvanco).map(([Etapa,AvancoFisicoPct])=>({Etapa, AvancoFisicoPct})), 'EtapaAvanco', ['Etapa','AvancoFisicoPct']);
   add(state.fornecedores.map(f=>({ID:f.id, Nome:f.nome, Contato:f.contato})), 'Fornecedores', ['ID','Nome','Contato']);
   add(state.materiais.map(m=>{ const x = insumoPor(m.insumoId); return {ID:m.id, CodigoInsumo:x?x.codigo:'', Nome:m.nome, Unidade:m.unidade, Saldo:m.saldo, CustoMedio:m.custoMedio}; }), 'Materiais', ['ID','CodigoInsumo','Nome','Unidade','Saldo','CustoMedio']);
-  const nfRows = []; state.notasFiscais.forEach(nf=>nf.itens.forEach(it=>nfRows.push({ID:nf.id, Numero:nf.numero, FornecedorID:nf.fornecedorId, Data:nf.data, MaterialID:it.materialId, Quantidade:it.qtd, ValorUnitario:it.valorUnit})));
-  add(nfRows, 'NotasFiscais', ['ID','Numero','FornecedorID','Data','MaterialID','Quantidade','ValorUnitario']);
-  add(state.pedidos.map(p=>({ID:p.id, OrcamentoItemID:p.orcamentoItemId, MaterialID:p.materialId, Quantidade:p.qtd, QuantidadeSolicitada:p.qtdSolicitada, Valor:p.valor, Data:p.data})), 'ConsumoMaterial', ['ID','OrcamentoItemID','MaterialID','Quantidade','QuantidadeSolicitada','Valor','Data']);
+  const nfRows = []; state.notasFiscais.forEach(nf=>nf.itens.forEach(it=>nfRows.push({ID:nf.id, Numero:nf.numero, Tipo:nf.tipo||'nota_fiscal', FornecedorID:nf.fornecedorId, Data:nf.data, MaterialID:it.materialId, OrcamentoItemID:it.orcamentoItemId||'', Quantidade:it.qtd, ValorUnitario:it.valorUnit})));
+  add(nfRows, 'NotasFiscais', ['ID','Numero','Tipo','FornecedorID','Data','MaterialID','OrcamentoItemID','Quantidade','ValorUnitario']);
+  add(state.pedidos.map(p=>({ID:p.id, Tipo:p.tipo||'servico', OrcamentoItemID:p.orcamentoItemId||'', MaterialID:p.materialId, Quantidade:p.qtd, QuantidadeSolicitada:p.qtdSolicitada, Valor:p.valor, Data:p.data, Observacao:p.observacao||''})), 'ConsumoMaterial', ['ID','Tipo','OrcamentoItemID','MaterialID','Quantidade','QuantidadeSolicitada','Valor','Data','Observacao']);
   add(state.empreiteiros.map(e=>({ID:e.id, Nome:e.nome, Contato:e.contato, Especialidade:e.especialidade})), 'Empreiteiros', ['ID','Nome','Contato','Especialidade']);
   add(state.contratos.map(c=>({ID:c.id, EmpreiteiroID:c.empreiteiroId, OrcamentoItemID:c.orcamentoItemId, ValorContratado:c.valorContratado, FormaPagamento:c.formaPagamento})), 'Contratos', ['ID','EmpreiteiroID','OrcamentoItemID','ValorContratado','FormaPagamento']);
   add(state.medicoes.map(m=>({ID:m.id, ContratoID:m.contratoId, Data:m.data, PercentualExecutado:m.percentual, Valor:m.valor, Status:m.status})), 'Medicoes', ['ID','ContratoID','Data','PercentualExecutado','Valor','Status']);
@@ -2293,11 +2353,11 @@ function handleImportarPlanilha(evt){
       if(nfs){
         const g = {};
         nfs.forEach(r=>{ const key = r.id || r.numero; if(!key) return;
-          if(!g[key]) g[key] = {id:idOr(r.id,uid), numero:String(r.numero||''), fornecedorId:parseInt(r.fornecedorid)||null, data:normData(r.data, todayStr()), itens:[]};
-          g[key].itens.push({materialId:parseInt(r.materialid)||null, qtd:num(r.quantidade), valorUnit:num(r.valorunitario)}); });
+          if(!g[key]) g[key] = {id:idOr(r.id,uid), numero:String(r.numero||''), tipo:String(r.tipo||'nota_fiscal'), fornecedorId:parseInt(r.fornecedorid)||null, data:normData(r.data, todayStr()), itens:[]};
+          g[key].itens.push({materialId:parseInt(r.materialid)||null, orcamentoItemId:parseInt(r.orcamentoitemid)||null, qtd:num(r.quantidade), valorUnit:num(r.valorunitario)}); });
         novo.notasFiscais = Object.values(g);
       }
-      const ped = sheet('ConsumoMaterial'); if(ped) novo.pedidos = ped.map(r=>({id:idOr(r.id,uid), orcamentoItemId:parseInt(r.orcamentoitemid)||null, materialId:parseInt(r.materialid)||null, qtd:num(r.quantidade), qtdSolicitada:num(r.quantidadesolicitada)||num(r.quantidade), valor:num(r.valor), data:normData(r.data, todayStr())}));
+      const ped = sheet('ConsumoMaterial'); if(ped) novo.pedidos = ped.map(r=>({id:idOr(r.id,uid), tipo:String(r.tipo||'servico'), observacao:String(r.observacao||''), orcamentoItemId:parseInt(r.orcamentoitemid)||null, materialId:parseInt(r.materialid)||null, qtd:num(r.quantidade), qtdSolicitada:num(r.quantidadesolicitada)||num(r.quantidade), valor:num(r.valor), data:normData(r.data, todayStr())}));
       const emp = sheet('Empreiteiros'); if(emp) novo.empreiteiros = emp.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), contato:String(r.contato||''), especialidade:String(r.especialidade||'')})).filter(x=>x.nome);
       const ctr = sheet('Contratos'); if(ctr) novo.contratos = ctr.map(r=>({id:idOr(r.id,uid), empreiteiroId:parseInt(r.empreiteiroid)||null, orcamentoItemId:parseInt(r.orcamentoitemid)||null, valorContratado:num(r.valorcontratado), formaPagamento:String(r.formapagamento||'')}));
       const med = sheet('Medicoes'); if(med) novo.medicoes = med.map(r=>({id:idOr(r.id,uid), contratoId:parseInt(r.contratoid)||null, data:normData(r.data, todayStr()), percentual:num(r.percentualexecutado), valor:num(r.valor), status:String(r.status||'pendente')}));
@@ -2336,7 +2396,7 @@ function handleImportarPlanilha(evt){
 /* ---------------------- Render principal ---------------------- */
 function renderAll(){
   renderMenu(); updateTopbar(); renderStatus();
-  const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, cadastros:renderCadastros, suprimentos:renderSuprimentos, estoque:renderEstoque, contratos:renderContratos, financeiro:renderFinanceiro};
+  const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, cadastros:renderCadastros, suprimentos:renderSuprimentos, estoque:renderEstoque, notas:renderNotas, baixa:renderBaixa, contratos:renderContratos, financeiro:renderFinanceiro};
   if(!map[currentTab]) currentTab = 'inicio';
   if(state.semObra){
     const su = state.usuario && state.usuario.superusuario;
@@ -2369,7 +2429,7 @@ function renderAll(){
   });
   document.querySelectorAll('details.intro').forEach(d=> d.addEventListener('toggle', ()=> setPref('intro-'+d.dataset.intro, d.open)));
   if(currentTab==='orcamento') atualizarPreviewOrc();
-  if(currentTab==='suprimentos') atualizarDicaConsumo();
+  if(currentTab==='baixa') atualizarDicaConsumo();
   salvar();
 }
 
