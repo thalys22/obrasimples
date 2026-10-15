@@ -190,11 +190,13 @@ templates/         telas de login e troca de senha
 
 ## Base SINAPI (consulta)
 
-O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). No Orçamento, "Adicionar serviço → Pelo SINAPI" busca a composição, mostra os insumos e preços (com aviso quando o preço é de São Paulo ou falta) e copia tudo para a obra. Composições e insumos do SINAPI não são editáveis (use Duplicar). A UF e o regime padrão ficam em Dados da obra. Para carregar um mês, **no seu computador** (não na Vercel), com `DATABASE_URL` apontando para o banco:
+O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). No Orçamento, "Adicionar serviço → Pelo SINAPI" busca a composição, mostra os insumos e preços (com aviso quando o preço é de São Paulo ou falta) e copia tudo para a obra. Composições e insumos do SINAPI não são editáveis (use Duplicar). A UF e o regime padrão ficam em Dados da obra.
+
+**Carregar um mês novo (administrador, pelo site):** Cadastros → "Carregar o SINAPI". Escolha o .xlsx mensal da Caixa (todas as UFs), marque as UFs e os regimes e clique em Carregar. A planilha é lida no seu navegador (use um computador; leva cerca de 30 s e uns 700 MB de memória) e os dados seguem em partes para o servidor, que confere o custo de cada composição antes de gravar. Cada UF e regime é gravado por inteiro ou não é gravado, e reenviar o mesmo arquivo não duplica nada. Só quem pode alterar a base geral vê essa seção.
+
+**Alternativa por comando** (no seu computador, com `DATABASE_URL` do banco):
 
 ```
 pip install -r requirements-etl.txt
 python manage.py carregar_sinapi --arquivo SINAPI_Referencia_2026_09.xlsx --base 2026-09 --uf SE BA AL --regime sd cd
 ```
-
-A carga é tudo ou nada, confere o custo de cada composição contra o publicado e não repete o mesmo arquivo.

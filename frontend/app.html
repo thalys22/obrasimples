@@ -1481,6 +1481,13 @@ function renderCadastros(){
           </tbody></table>`)}${c.observacao?`<p class="helptext" style="margin:6px 0 0;">${esc(c.observacao)}</p>`:''}</td></tr>` : ''}`; }).join('')}</tbody></table>`) : '<div class="empty">Nenhuma composição cadastrada.</div>'}
     </div>
 
+
+    ${base ? `<div class="card" id="sec-sinapi-carga" style="margin-bottom:18px;">
+      <h3>Carregar o SINAPI <span class="codigo">(administrador)</span></h3>
+      <p class="helptext">Escolha o arquivo .xlsx mensal da Caixa ("Relatório de Insumos e Composições", todas as UFs). A leitura é feita no seu navegador, num computador: leva cerca de 30 segundos e usa bastante memória. Depois os dados seguem em partes para o servidor, que confere o custo de cada composição antes de gravar. Reenviar o mesmo arquivo não duplica nada.</p>
+      <label class="ghost">Escolher arquivo do SINAPI<input type="file" accept=".xlsx" hidden onchange="sinCargaArquivo(event)"></label>
+      <div id="sin-carga-corpo">${sinCargaCorpo()}</div>
+    </div>` : ''}
     <div class="card" id="sec-imp">
       <h3>Importar planilhas</h3>
       <p class="helptext">Baixe o modelo, preencha no Excel e importe. Se o código já existir, o cadastro é atualizado; se não, é criado. Se alguma linha tiver erro, nada é gravado e o sistema diz qual linha corrigir.</p>
@@ -1502,6 +1509,178 @@ function filtrarInsumos(){
   const tp = val('b-ins-tipo'), es = val('b-ins-esc');
   filtrarLinhas('tb-ins', val('b-ins'), tr=>(!tp || tr.dataset.tipo===tp) && (!es || tr.dataset.esc===es));
 }
+
+/* ---- Carga do SINAPI pelo site (administrador): lê o xlsx aqui no navegador e envia os dados em partes ---- */
+const sinCarga = {buf:null, nome:'', sha:'', base:'', ufsDisp:[], ufsSel:new Set(), regimes:{sd:true, cd:true}, log:[], rodando:false, erro:'', resumo:[], fim:false};
+const SIN_ABAS = {sd:['ISD','CSD'], cd:['ICD','CCD']};
+const pausa = ms => new Promise(r=>setTimeout(r, ms));
+function sinCargaLog(t){ sinCarga.log.push(t); sinCargaDesenhar(); return pausa(30); }
+function sinCelula(ws, r, c){ return ws[XLSX.utils.encode_cell({r, c})]; }
+function sinLinhas(ws){ return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null}); }
+function sinNorm(v){ return String(v==null?'':v).replace(/\s+/g,' ').trim().toLowerCase(); }
+function sinMes(ws, aba){
+  const c = ws['B3']; const m = c && /^\s*(\d{2})\/(\d{4})\s*$/.exec(String(c.v));
+  if(!m) throw new Error(`Aba ${aba}: mês de referência (célula B3) não encontrado.`);
+  return `${m[2]}-${m[1]}`;
+}
+function sinAba(wb, nome){
+  if(!wb.Sheets[nome]) throw new Error(`Aba ${nome} não encontrada. Esse arquivo é o relatório "Insumos e Composições" do SINAPI?`);
+  return wb.Sheets[nome];
+}
+function sinCabecalho(linhas, idx, esperado, aba){
+  const l = linhas[idx] || [];
+  esperado.forEach((t,i)=>{ if(sinNorm(l[i]) !== sinNorm(t)) throw new Error(`Aba ${aba}: coluna ${i+1} deveria ser "${t}" e veio "${sinNorm(l[i])}". O layout do arquivo mudou.`); });
+}
+function sinColsUF(linha, ufs, inicio, aba){
+  const cols = {};
+  (linha||[]).forEach((v,i)=>{ const t = String(v||'').trim(); if(i>=inicio && ufs.includes(t) && !(t in cols)) cols[t] = i; });
+  const falta = ufs.filter(u=>!(u in cols)); if(falta.length) throw new Error(`Aba ${aba}: UF(s) ${falta.join(', ')} não encontradas.`);
+  return cols;
+}
+const sinNum = v => (v==null || v==='') ? null : (typeof v === 'number' ? v : (isFinite(parseFloat(String(v).replace(',','.'))) ? parseFloat(String(v).replace(',','.')) : null));
+
+async function sinCargaArquivo(evt){
+  const f = evt.target.files[0]; evt.target.value = ''; if(!f) return;
+  Object.assign(sinCarga, {buf:null, nome:f.name, sha:'', base:'', ufsDisp:[], ufsSel:new Set(), log:[], erro:'', resumo:[], fim:false, rodando:true});
+  sinCargaDesenhar();
+  try{
+    await sinCargaLog('Lendo o arquivo…');
+    const buf = await f.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), {type:'array', sheets:['ISD'], cellStyles:false, cellHTML:false});
+    const ws = sinAba(wb, 'ISD');
+    const linhas = sinLinhas(ws);
+    sinCabecalho(linhas, 9, ['Classificação','Código do Insumo','Descrição do Insumo','Unidade','Origem de Preço'], 'ISD');
+    sinCarga.base = sinMes(ws, 'ISD');
+    sinCarga.ufsDisp = (linhas[9]||[]).slice(5).map(v=>String(v||'').trim()).filter(v=>/^[A-Z]{2}$/.test(v));
+    if(!sinCarga.ufsDisp.length) throw new Error('Nenhuma UF encontrada no cabeçalho da aba ISD.');
+    const dig = await crypto.subtle.digest('SHA-256', buf);
+    sinCarga.sha = [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    sinCarga.buf = buf;
+    const jaUf = (state.obra && state.obra.uf) || '';
+    if(sinCarga.ufsDisp.includes(jaUf)) sinCarga.ufsSel.add(jaUf);
+    sinCarga.log = [`Arquivo lido: referência ${mesAno(sinCarga.base)}. Escolha as UFs e os regimes.`];
+  }catch(e){ sinCarga.erro = e.message || String(e); }
+  sinCarga.rodando = false; sinCargaDesenhar();
+}
+function sinCargaMarcar(tipo, k, v){
+  if(tipo==='uf'){ v ? sinCarga.ufsSel.add(k) : sinCarga.ufsSel.delete(k); } else sinCarga.regimes[k] = v;
+}
+async function sinCargaPost(url, corpo){
+  const r = await fetch(url, {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRFToken':csrf()}, body:JSON.stringify(corpo||{})});
+  if(r.status === 401){ location.href = '/conta/login/?next=/'; throw new Error('Sessão expirada.'); }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if(!r.ok || !j) throw new Error((j && j.erro) || (r.status===413 ? 'Envio grande demais para o servidor.' : `Erro ${r.status} no servidor.`));
+  return j;
+}
+async function sinEnviar(cid, tipo, regime, linhas, rotulo){
+  const total = JSON.stringify(linhas).length, partes = Math.max(1, Math.ceil(total / 1200000)), por = Math.ceil(linhas.length / partes) || 1;
+  for(let i=0; i<partes; i++){
+    await sinCargaPost(`/api/sinapi/carga/${cid}/parte`, {tipo, regime, ordem:i, dados: linhas.slice(i*por, (i+1)*por)});
+    await sinCargaLog(`${rotulo}: parte ${i+1} de ${partes} enviada`);
+  }
+}
+async function sinCargaIniciar(){
+  const ufs = [...sinCarga.ufsSel], regimes = Object.keys(sinCarga.regimes).filter(k=>sinCarga.regimes[k]);
+  if(!ufs.length){ erro('Marque pelo menos uma UF.'); return; }
+  if(!regimes.length){ erro('Marque pelo menos um regime.'); return; }
+  Object.assign(sinCarga, {rodando:true, erro:'', resumo:[], fim:false, log:[]}); sinCargaDesenhar();
+  try{
+    const ini = await sinCargaPost('/api/sinapi/carga/iniciar', {base:sinCarga.base, ufs, regimes, sha256:sinCarga.sha, arquivo:sinCarga.nome});
+    const cid = ini.cargaId, leitura = ini.ufsLeitura, ja = new Set(ini.jaCarregadas);
+    if(ja.size) await sinCargaLog('Já carregados com este mesmo arquivo (serão pulados): ' + [...ja].join(', '));
+    // 1. Analítico (estrutura)
+    await sinCargaLog('Lendo a estrutura das composições (aba Analítico)…');
+    let wb = XLSX.read(new Uint8Array(sinCarga.buf), {type:'array', sheets:['Analítico'], cellStyles:false, cellHTML:false});
+    let ws = sinAba(wb, 'Analítico'), L = sinLinhas(ws);
+    sinCabecalho(L, 9, ['Grupo','Código da Composição','Tipo Item','Código do Item','Descrição','Unidade','Coeficiente','Situação'], 'Analítico');
+    const comps = [], itens = [], ordem = {}, infoAn = {};
+    for(let i=10; i<L.length; i++){
+      const r = L[i]; if(r[1]==null || r[1]==='') continue;
+      const cod = parseInt(r[1]), tipo = sinNorm(r[2]);
+      if(tipo===''){ comps.push([cod, String(r[0]||''), String(r[4]||''), String(r[5]||''), String(r[7]||'')]); continue; }
+      if(tipo!=='insumo' && tipo!=='composicao') throw new Error(`Analítico, linha ${i+1}: Tipo Item desconhecido "${r[2]}".`);
+      ordem[cod] = (ordem[cod]||0) + 1;
+      const alvo = parseInt(r[3]);
+      if(tipo==='insumo' && !(alvo in infoAn)) infoAn[alvo] = [String(r[4]||''), String(r[5]||'')];
+      itens.push([cod, ordem[cod], tipo==='composicao'?1:0, alvo, sinNum(r[6]), String(r[7]||'').trim()==='SEM PREÇO'?1:0]);
+    }
+    L = null; wb = null; ws = null;
+    await sinCargaLog(`Estrutura lida: ${comps.length} composições e ${itens.length} itens.`);
+    await sinEnviar(cid, 'comps', '', comps, 'Composições');
+    await sinEnviar(cid, 'itens', '', itens, 'Itens das composições');
+    // 2. Preços e custos por regime
+    let primeiro = true;
+    for(const rg of regimes){
+      const [aIns, aCus] = SIN_ABAS[rg];
+      await sinCargaLog(`Lendo ${aIns} e ${aCus}…`);
+      wb = XLSX.read(new Uint8Array(sinCarga.buf), {type:'array', sheets:[aIns, aCus], cellFormula:true, cellStyles:false, cellHTML:false});
+      const wi = sinAba(wb, aIns), wc = sinAba(wb, aCus);
+      if(sinMes(wi, aIns) !== sinCarga.base || sinMes(wc, aCus) !== sinCarga.base) throw new Error(`As abas ${aIns}/${aCus} não são do mesmo mês do arquivo (${mesAno(sinCarga.base)}).`);
+      const Li = sinLinhas(wi);
+      sinCabecalho(Li, 9, ['Classificação','Código do Insumo','Descrição do Insumo','Unidade','Origem de Preço'], aIns);
+      const ci = sinColsUF(Li[9], leitura, 5, aIns);
+      const precos = [], insumos = [], vistos = new Set();
+      for(let i=10; i<Li.length; i++){
+        const r = Li[i]; if(r[1]==null || r[1]==='') continue;
+        const cod = parseInt(r[1]); vistos.add(cod);
+        if(primeiro) insumos.push([cod, String(r[0]||'').trim(), String(r[2]||'').trim(), String(r[3]||'').trim()]);
+        precos.push([cod, String(r[4]||'').trim(), ...leitura.map(u=>sinNum(r[ci[u]]))]);
+      }
+      if(primeiro){
+        Object.keys(infoAn).forEach(c=>{ if(!vistos.has(+c)) insumos.push([+c, '', infoAn[c][0], infoAn[c][1]]); });
+        await sinEnviar(cid, 'insumos', '', insumos, 'Insumos');
+      }
+      await sinEnviar(cid, 'precos', rg, precos, `Preços (${rg})`);
+      const Lc = sinLinhas(wc);
+      sinCabecalho(Lc, 9, ['Grupo','Código da Composição','Descrição','Unidade'], aCus);
+      const cc = sinColsUF(Lc[8], leitura, 4, aCus);
+      const custos = []; let semCodigo = 0;
+      for(let i=10; i<Lc.length; i++){
+        const r = Lc[i]; if(r[2]==null || r[2]==='') continue;
+        const cel = sinCelula(wc, i, 1), m = cel && /MATCH\(\s*(\d+)\s*,/.exec(String(cel.f||''));
+        const cod = m ? parseInt(m[1]) : (typeof (cel&&cel.v)==='number' && cel.v>0 ? cel.v : null);
+        if(!cod){ semCodigo++; continue; }
+        custos.push([cod, ...leitura.flatMap(u=>[sinNum(r[cc[u]]), sinNum(r[cc[u]+1]) || 0])]);
+      }
+      if(semCodigo) throw new Error(`Aba ${aCus}: não consegui ler o código de ${semCodigo} composição(ões) (a fórmula do arquivo mudou?).`);
+      await sinEnviar(cid, 'custos', rg, custos, `Custos (${rg})`);
+      wb = null; primeiro = false;
+    }
+    // 3. Gravar
+    await sinCargaLog('Gravando a estrutura no banco…');
+    const e = await sinCargaPost(`/api/sinapi/carga/${cid}/estrutura`);
+    await sinCargaLog(e.estruturaNova ? `Estrutura gravada: ${e.composicoes} composições, ${e.insumos} insumos.` : 'Estrutura já estava carregada com este arquivo.');
+    if(e.unidadesForaDoMapa && Object.keys(e.unidadesForaDoMapa).length) await sinCargaLog('Unidades fora do mapa (mantidas como vieram): ' + JSON.stringify(e.unidadesForaDoMapa));
+    for(const rg of regimes) for(const uf of ufs){
+      if(ja.has(`${uf}/${rg}`)){ sinCarga.resumo.push({uf, regime:rg, pulada:true}); continue; }
+      await sinCargaLog(`Gravando ${uf} · ${REGIME_NOME[rg]||rg}…`);
+      const r = await sinCargaPost(`/api/sinapi/carga/${cid}/referencia`, {uf, regime:rg});
+      sinCarga.resumo.push({uf, regime:rg, ...r});
+    }
+    await sinCargaPost(`/api/sinapi/carga/${cid}/concluir`);
+    sinDraft.refs = null; sinDraft.res = null; sinDraft.prev = null;
+    sinCarga.fim = true; await sinCargaLog('Carga concluída.');
+  }catch(e){ sinCarga.erro = e.message || String(e); }
+  sinCarga.rodando = false; sinCargaDesenhar();
+}
+function sinCargaCorpo(){
+  const c = sinCarga;
+  const caixa = (tipo, k, marcado, rotulo) => `<label style="display:inline-flex;gap:5px;align-items:center;margin-right:12px;"><input type="checkbox" ${marcado?'checked':''} ${c.rodando?'disabled':''} onchange="sinCargaMarcar('${tipo}','${k}',this.checked)"> ${rotulo}</label>`;
+  return `
+    ${c.erro ? `<div class="sin-aviso" style="border-color:#B3261E;background:#FCE9E7;"><b>Não foi possível concluir:</b> ${esc(c.erro)}<br>O que já foi gravado em etapas anteriores continua válido (cada UF e regime é gravado por inteiro ou não é gravado). Corrija e tente de novo: o que já foi carregado é pulado.</div>` : ''}
+    ${c.buf ? `<div style="margin:10px 0;"><b>${esc(c.nome)}</b> · referência <b>${mesAno(c.base)}</b>
+      <div style="margin-top:8px;"><span class="codigo">UFs</span> ${c.ufsDisp.map(u=>caixa('uf', u, c.ufsSel.has(u), u)).join('')}</div>
+      <div style="margin-top:6px;"><span class="codigo">Regimes</span> ${caixa('rg','sd',c.regimes.sd,'Sem desoneração')}${caixa('rg','cd',c.regimes.cd,'Com desoneração')}</div>
+      <p class="helptext" style="margin:8px 0;">Cada UF e regime ocupa cerca de 5 a 8 MB no banco. Carregue só as UFs que vocês usam.</p>
+      <button class="primary" ${c.rodando?'disabled':''} onclick="sinCargaIniciar()">${c.rodando?'Carregando…':'Carregar no Prumo'}</button></div>` : ''}
+    ${c.log.length ? `<div class="preview" style="margin:8px 0;max-height:220px;overflow:auto;font-family:var(--font-mono);font-size:12px;">${c.log.map(l=>`<div>${esc(l)}</div>`).join('')}</div>` : ''}
+    ${c.resumo.length ? tbl(`<table class="mini"><thead><tr><th>UF</th><th>Regime</th><th class="num">Com custo</th><th class="num">Dentro da tolerância</th><th class="num">Até 5%</th><th class="num">Acima de 5%</th><th class="num" title="Insumos sem preço coletado na UF (inclui os que usam o preço de São Paulo e os sem preço nacional)">Sem preço local</th></tr></thead><tbody>
+      ${c.resumo.map(r=>r.pulada ? `<tr><td>${r.uf}</td><td>${REGIME_NOME[r.regime]||r.regime}</td><td colspan="5" class="codigo">já carregado com este arquivo</td></tr>`
+        : `<tr><td>${r.uf}</td><td>${REGIME_NOME[r.regime]||r.regime}</td><td class="num">${r.com_custo}</td><td class="num">${r.conferencia.dentro}</td><td class="num">${r.conferencia.ate5}</td><td class="num">${r.conferencia.acima5}</td><td class="num">${r.pct_sem_preco_local}%</td></tr>`).join('')}
+      </tbody></table>`) : ''}
+    ${c.fim ? '<p class="formhint">Pronto. O SINAPI já aparece em Orçamento → Adicionar serviço → Pelo SINAPI.</p>' : ''}`;
+}
+function sinCargaDesenhar(){ const el = document.getElementById('sin-carga-corpo'); if(el) el.innerHTML = sinCargaCorpo(); }
 
 /* ---- planilhas do cadastro ---- */
 function lerPlanilha(evt, aba, cb){

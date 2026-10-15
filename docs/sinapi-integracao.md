@@ -310,3 +310,13 @@ Código: `sinapi/` (`models.py`, `leitor.py`, `carga.py`, `servico.py`, `mapas.p
 ## 18. Alagoas incluída (15/10/2026)
 
 Escopo inicial agora é **SE, BA e AL** (regimes sd e cd). Nenhuma mudança de código: a UF é parâmetro da carga. Medido com o arquivo 09/2026: AL/sd 8.368 dentro da tolerância, 71 até 5%, 4 acima de 5%; AL/cd 8.362/79/2. As 4 acima são composições de centavos (R$ 0,25 a R$ 0,57, diferença de até 3 centavos), abaixo do limite de bloqueio de 1%. AL/sd: 1.622 de 4.878 preços (33%) vêm de São Paulo. Carga das 3 UFs: 26 s.
+
+## 19. Carga pelo site (15/10/2026)
+
+Pedido: carregar o SINAPI sem terminal. Decisões: só administrador (mesma regra da base geral) e leitura do xlsx no navegador.
+
+- **Por quê no navegador:** o arquivo (13,6 MB) passa do limite de 4,5 MB por envio de uma função da Vercel. O SheetJS que o app já usa (0.18.5) lê as abas necessárias em 5 a 8 s (medido em Node) e expõe a fórmula `HYPERLINK` (10.599 de 10.599 códigos). Pico de memória medido: ~690 MB lendo 5 abas de uma vez; o app lê uma etapa por vez para ficar abaixo disso.
+- **Fluxo:** `iniciar` → várias `parte` (≤ ~1,2 MB cada; o servidor recusa mais de 2,3 MB) → `estrutura` → uma `referencia` por UF e regime → `concluir`. As partes ficam em `CargaParte` e são apagadas no fim (e as com mais de 1 dia, no próximo início). A estrutura só é regravada se o sha256 for novo; cada referência é gravada por inteiro ou não é gravada.
+- **Medido (PostgreSQL local, dados reais):** estrutura 7,7 s; cada UF+regime 1,6 s; envio das 44 partes 1 s. No navegador (SQLite local): arquivo lido em 2 s, carga completa de SE, BA e AL nos dois regimes em 23 s, resultados idênticos ao comando; reenvio do mesmo arquivo pula tudo (14 s, só leitura).
+- **Risco não verificado:** o tempo máximo de uma função na Vercel em produção. A etapa mais longa (estrutura, 7,7 s local) pode ficar mais lenta falando com o Neon. Se der erro de tempo, a etapa é atômica e pode ser repetida; o remédio é aumentar o limite de duração da função na Vercel (não configurei por não poder verificar). O comando `carregar_sinapi` continua como alternativa.
+- O administrador não precisa ter obra para carregar.

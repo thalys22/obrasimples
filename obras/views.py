@@ -21,7 +21,7 @@ def app(request):
     return HttpResponse(APP_HTML.read_bytes(), content_type="text/html; charset=utf-8")
 
 
-def api(metodos, com_estado=True):
+def api(metodos, com_estado=True, exige_obra=True):
     """Exige login, lê o JSON, carrega a obra do usuário e devolve o estado atualizado."""
     def deco(fn):
         @wraps(fn)
@@ -36,18 +36,22 @@ def api(metodos, com_estado=True):
             except ValueError:
                 return JsonResponse({"erro": "Requisição inválida."}, status=400)
             obra = S.obter_obra(request.user, request.session.get("obra_id"))
-            if obra is None:
+            if obra is None and not exige_obra:
+                pass
+            elif obra is None:
                 if request.method == "GET":
                     return JsonResponse({"estado": S.estado_sem_obra(request.user)})
                 return JsonResponse({"erro": "Nenhuma obra foi liberada para você ainda. Fale com o administrador."}, status=400)
-            request.session["obra_id"] = obra.pk
+            if obra is not None:
+                request.session["obra_id"] = obra.pk
             try:
                 extra = fn(request, obra, corpo, *args, **kwargs) or {}
             except S.RegraNegocio as e:
                 return JsonResponse({"erro": str(e)}, status=400)
             if not com_estado:
                 return JsonResponse(extra)
-            obra.refresh_from_db()
+            if obra is not None:
+                obra.refresh_from_db()
             return JsonResponse({"estado": S.estado(obra, request.user), **extra})
         return inner
     return deco
@@ -284,3 +288,45 @@ def sinapi_composicao(request, obra, d, codigo):
 def sinapi_importar(request, obra, d):
     comp, avisos = S.importar_sinapi_composicao(obra, d)
     return {"composicaoId": comp.pk, "avisos": avisos}
+
+
+# ---------------------------------------------------------------- carga do SINAPI pelo site (só administrador)
+def _carga_web(request, fn):
+    if not S.pode_editar_base(request.user):
+        raise S.RegraNegocio("Só o administrador carrega o SINAPI.")
+    from sinapi import carga as carga_sinapi
+    try:
+        return fn()
+    except carga_sinapi.ErroCarga as e:
+        raise S.RegraNegocio(str(e))
+
+
+@api(["POST"], com_estado=False, exige_obra=False)
+def sinapi_carga_iniciar(request, obra, d):
+    from sinapi import carga_web
+    return _carga_web(request, lambda: carga_web.iniciar(d))
+
+
+@api(["POST"], com_estado=False, exige_obra=False)
+def sinapi_carga_parte(request, obra, d, cid):
+    from sinapi import carga_web
+    return {"recebidas": _carga_web(request, lambda: carga_web.guardar_parte(cid, d.get("tipo"), d.get("regime", ""), d.get("ordem"), d.get("dados")))}
+
+
+@api(["POST"], com_estado=False, exige_obra=False)
+def sinapi_carga_estrutura(request, obra, d, cid):
+    from sinapi import carga_web
+    return _carga_web(request, lambda: carga_web.aplicar_estrutura(cid))
+
+
+@api(["POST"], com_estado=False, exige_obra=False)
+def sinapi_carga_referencia(request, obra, d, cid):
+    from sinapi import carga_web
+    return _carga_web(request, lambda: carga_web.aplicar_referencia(cid, d.get("uf"), d.get("regime")))
+
+
+@api(["POST"], com_estado=False, exige_obra=False)
+def sinapi_carga_concluir(request, obra, d, cid):
+    from sinapi import carga_web
+    _carga_web(request, lambda: carga_web.concluir(cid))
+    return {"ok": True}

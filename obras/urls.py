@@ -38,4 +38,9 @@ urlpatterns = [
     path("api/sinapi/composicoes", v.sinapi_buscar),
     path("api/sinapi/composicoes/<int:codigo>", v.sinapi_composicao),
     path("api/sinapi/importar", v.sinapi_importar),
+    path("api/sinapi/carga/iniciar", v.sinapi_carga_iniciar),
+    path("api/sinapi/carga/<str:cid>/parte", v.sinapi_carga_parte),
+    path("api/sinapi/carga/<str:cid>/estrutura", v.sinapi_carga_estrutura),
+    path("api/sinapi/carga/<str:cid>/referencia", v.sinapi_carga_referencia),
+    path("api/sinapi/carga/<str:cid>/concluir", v.sinapi_carga_concluir),
 ]

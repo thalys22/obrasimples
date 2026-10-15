@@ -103,3 +103,17 @@ class Carga(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["referencia", "sha256"], name="sinapi_carga_unica")]
+
+
+class CargaParte(models.Model):
+    """Pedaço de uma carga feita pelo site (o navegador lê o xlsx e envia em partes pequenas).
+    Área de passagem: apagada quando a carga termina ou fica velha."""
+    carga_id = models.CharField(max_length=32, db_index=True)
+    tipo = models.CharField(max_length=12)
+    regime = models.CharField(max_length=2, blank=True)
+    ordem = models.PositiveIntegerField(default=0)
+    dados = models.TextField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["carga_id", "tipo", "regime", "ordem"], name="sinapi_parte_unica")]
