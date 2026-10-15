@@ -362,6 +362,10 @@
   .tag.base{background:var(--blueprint-soft);color:var(--blueprint-deep);}
   .tag.obra{background:var(--accent-soft);color:#9A4F10;}
   .tag.ref{background:var(--amber-soft);color:#8A5E10;}
+  .tag.sinapi{background:#E3EEF9;color:#1B4F80;}
+  .tag.sp{background:var(--amber-soft);color:#8A5E10;}
+  .sin-res tr{cursor:pointer;} .sin-res tr:hover{background:var(--paper);}
+  .sin-aviso{margin:8px 0;padding:8px 10px;border-left:3px solid #C98A1B;background:var(--amber-soft);font-size:12.5px;}
   .tag.verba{background:var(--paper-2);color:var(--concrete);}
   .busca{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
   .busca input, .busca select{padding:7px 9px;border:1px solid var(--line-strong);border-radius:3px;font-family:var(--font-body);font-size:13.5px;background:var(--white);color:var(--ink);}
@@ -1053,6 +1057,8 @@ function renderDados(){
         <div><label for="d-nome">Nome da obra</label><input id="d-nome" value="${esc(o.nome)}" data-obra="nome"></div>
         <div><label for="d-cliente">Cliente</label><input id="d-cliente" value="${esc(o.cliente)}" data-obra="cliente" placeholder="Nome do cliente"></div>
         <div><label for="d-prazo">Prazo de entrega</label><input id="d-prazo" type="date" value="${esc(o.prazo)}" data-obra="prazo"></div>
+        <div><label for="d-uf">UF da obra (para o SINAPI)</label><input id="d-uf" maxlength="2" value="${esc(o.uf||'')}" data-obra="uf" style="text-transform:uppercase;"></div>
+        <div><label for="d-reg">Regime do SINAPI</label><select id="d-reg" data-obra="regimeSinapi"><option value="sd" ${o.regimeSinapi!=='cd'?'selected':''}>Sem desoneração</option><option value="cd" ${o.regimeSinapi==='cd'?'selected':''}>Com desoneração</option></select></div>
         <div><label for="d-valor">Valor contratado com o cliente (R$)</label><input id="d-valor" type="number" step="0.01" inputmode="decimal" value="${o.valorContratado||''}" data-obra="valorContratado"></div>
       </div>
       <p class="helptext" style="margin:12px 0 0;">As alterações são salvas assim que você sai do campo.</p>
@@ -1292,9 +1298,9 @@ function toggleOrigem(id){ abertos.has(id) ? abertos.delete(id) : abertos.add(id
 const insumoPor = id => (state.insumos||[]).find(x=>x.id===id);
 const compPor = id => (state.composicoes||[]).find(x=>x.id===id);
 const tipoNome = t => ({'material':'Material','mao-de-obra':'Mão de obra','equipamento':'Equipamento','empreitada':'Empreitada'}[t] || t);
-const tagEscopo = x => x.base ? `<span class="tag base">base geral</span>` : `<span class="tag obra">desta obra</span>`;
-const fmtCoef = v => (v||0).toLocaleString('pt-BR',{maximumFractionDigits:6});
-const podeEditar = x => !x.base || state.podeEditarBase;
+const tagEscopo = x => x.fonte==='sinapi' ? `<span class="tag sinapi" title="${esc(x.origem||'')}">SINAPI${x.origemPreco==='sp'?' · preço SP':''}${x.semPreco?' · sem preço':''}</span>` : x.base ? `<span class="tag base">base geral</span>` : `<span class="tag obra">desta obra</span>`;
+const fmtCoef = v => (v||0).toLocaleString('pt-BR',{maximumFractionDigits:8});
+const podeEditar = x => x.fonte==='sinapi' ? false : (!x.base || state.podeEditarBase);
 function filtrarLinhas(tbodyId, termo, extra){
   const ts = norm(termo).split(/\s+/).filter(Boolean);
   document.querySelectorAll('#'+tbodyId+' tr[data-busca]').forEach(tr=>{
@@ -1327,21 +1333,24 @@ function abrirInsumo(id){
   if(!x) return;
   const so = id && !podeEditar(x);
   const dis = so ? 'disabled' : '';
-  abrirPainel(id ? (so ? 'Insumo da base geral' : 'Editar insumo') : 'Novo insumo', `
-    ${so ? `<p class="formhint">Este insumo é da ${t('basegeral','base geral')}: só o administrador altera. Se o preço for diferente na sua obra, cadastre um insumo próprio.</p>` : ''}
+  const sinapi = x.fonte==='sinapi', precoLivre = sinapi && x.semPreco;
+  abrirPainel(id ? (sinapi ? 'Insumo do SINAPI' : so ? 'Insumo da base geral' : 'Editar insumo') : 'Novo insumo', `
+    ${sinapi ? `<p class="formhint">Este insumo vem do SINAPI (${esc(x.origem||'')}) e não pode ser editado, para manter a rastreabilidade.${x.origemPreco==='sp'?' <b>O preço é de São Paulo</b>: o SINAPI não coletou preço na sua UF neste mês.':''}${precoLivre?' <b>O SINAPI não tem preço para ele:</b> informe o preço que você pratica.':''}</p>` : ''}
+    ${so && !sinapi ? `<p class="formhint">Este insumo é da ${t('basegeral','base geral')}: só o administrador altera. Se o preço for diferente na sua obra, cadastre um insumo próprio.</p>` : ''}
     <div class="formgrid">
       <div><label for="p-ins-cod">Código</label><input id="p-ins-cod" value="${esc(x.codigo)}" placeholder="automático" ${dis}></div>
       <div style="grid-column:span 2;"><label for="p-ins-desc">Descrição</label><input id="p-ins-desc" value="${esc(x.descricao)}" placeholder="Ex: Cimento CP-II 50 kg" ${dis}></div>
       <div><label for="p-ins-un">Unidade</label><input id="p-ins-un" value="${esc(x.unidade)}" placeholder="sc, kg, m², h, un..." ${dis}></div>
       <div><label for="p-ins-tipo">Tipo</label><select id="p-ins-tipo" ${dis}>${(state.tiposInsumo||[]).map(tp=>`<option value="${tp.id}" ${tp.id===x.tipo?'selected':''}>${esc(tp.nome)}</option>`).join('')}</select></div>
-      <div><label for="p-ins-preco">Preço de referência (R$)</label><input id="p-ins-preco" type="number" step="0.01" min="0" inputmode="decimal" value="${x.preco||''}" ${dis}></div>
+      <div><label for="p-ins-preco">Preço de referência (R$)</label><input id="p-ins-preco" type="number" step="0.01" min="0" inputmode="decimal" value="${x.preco||''}" ${so && !precoLivre ? 'disabled' : ''}></div>
       ${!id && state.podeEditarBase ? `<div><label for="p-ins-esc">Onde vale</label><select id="p-ins-esc"><option value="obra">Só nesta obra</option><option value="base">Base geral (todas as obras)</option></select></div>` : ''}
     </div>
     ${!id ? '<p class="formhint">Deixe o código em branco para o sistema numerar sozinho. O código não pode se repetir.</p>' : ''}`,
-    so ? `<button class="ghost" onclick="fecharPainel()">Fechar</button>` : `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarInsumo(${id||0})">Salvar insumo</button>`);
+    so && !precoLivre ? `<button class="ghost" onclick="fecharPainel()">Fechar</button>` : `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarInsumo(${id||0})">${precoLivre?'Salvar preço':'Salvar insumo'}</button>`);
 }
 async function salvarInsumo(id){
   const d = {codigo:val('p-ins-cod').trim(), descricao:val('p-ins-desc').trim(), unidade:val('p-ins-un').trim(), tipo:val('p-ins-tipo'), preco:val('p-ins-preco')||0, escopo:val('p-ins-esc')||'obra'};
+  if(id && (insumoPor(id)||{}).fonte==='sinapi'){ const r = await api('POST', `/api/insumos/${id}`, {preco:d.preco}); if(r){ fecharPainel(); toast('ok','Preço salvo',''); } return; }
   if(!d.descricao || !d.unidade){ erro('Informe a descrição e a unidade.'); return; }
   const r = await api('POST', id ? `/api/insumos/${id}` : '/api/insumos', d);
   if(r){ fecharPainel(); toast('ok', id ? 'Insumo atualizado' : 'Insumo cadastrado', id ? '<div>Serviços que já estão no orçamento mantêm o preço da data em que entraram. Use "atualizar pela composição" no serviço se quiser o preço novo.</div>' : ''); }
@@ -1366,14 +1375,15 @@ function abrirComposicao(id){
   if(id && !c) return;
   ed = {tipo:'comp', id:id||0, so: !!(c && !podeEditar(c)), base: c ? c.base : false,
         codigo: c?c.codigo:'', descricao: c?c.descricao:'', unidade: c?c.unidade:'', observacao: c?c.observacao:'',
+        sinapi: !!(c && c.fonte==='sinapi'), origem: c ? c.origem : '',
         itens: c ? c.itens.map(i=>({insumoId:i.insumoId, coef:i.coef})) : [{insumoId:null, coef:''}]};
   desenharComposicao();
 }
 function desenharComposicao(){
   const so = ed.so, dis = so ? 'disabled' : '';
-  const titulo = ed.id ? (so ? 'Composição da base geral' : 'Editar composição') : 'Nova composição de serviço';
+  const titulo = ed.id ? (ed.sinapi ? 'Composição do SINAPI' : so ? 'Composição da base geral' : 'Editar composição') : 'Nova composição de serviço';
   abrirPainel(titulo, `
-    ${so ? `<p class="formhint">Esta composição é da ${t('basegeral','base geral')}. Para ajustar coeficientes só na sua obra, use <b>Duplicar para esta obra</b>.</p>` : `<p class="formhint">Diga quanto de cada insumo vai em <b>1 unidade</b> do serviço (o ${t('coeficiente','coeficiente')}). O custo do serviço é calculado sozinho com os preços dos insumos.</p>`}
+    ${ed.sinapi ? `<p class="formhint">Esta composição vem do SINAPI (${esc(ed.origem)}) e não pode ser editada, para manter a rastreabilidade. Para ajustar coeficientes, use <b>Duplicar para esta obra</b>: a cópia é sua e o original continua intacto.</p>` : so ? `<p class="formhint">Esta composição é da ${t('basegeral','base geral')}. Para ajustar coeficientes só na sua obra, use <b>Duplicar para esta obra</b>.</p>` : `<p class="formhint">Diga quanto de cada insumo vai em <b>1 unidade</b> do serviço (o ${t('coeficiente','coeficiente')}). O custo do serviço é calculado sozinho com os preços dos insumos.</p>`}
     <div class="formgrid">
       <div><label for="p-c-cod">Código</label><input id="p-c-cod" value="${esc(ed.codigo)}" placeholder="automático" oninput="ed.codigo=this.value" ${dis}></div>
       <div style="grid-column:span 2;"><label for="p-c-desc">Serviço (descrição)</label><input id="p-c-desc" value="${esc(ed.descricao)}" placeholder="Ex: Alvenaria de vedação com bloco cerâmico" oninput="ed.descricao=this.value" ${dis}></div>
@@ -1453,7 +1463,7 @@ function renderCadastros(){
         ${ins.map(x=>`<tr data-busca="${esc(norm(x.codigo+' '+x.descricao))}" data-tipo="${x.tipo}" data-esc="${x.base?'base':'obra'}">
           <td class="codigo">${esc(x.codigo)}</td><td>${esc(x.descricao)}</td><td class="mono">${esc(x.unidade)}</td><td>${esc(tipoNome(x.tipo))}</td>
           <td class="num">${fmtMoney(x.preco)}</td><td>${tagEscopo(x)}</td>
-          <td class="acoes">${podeEditar(x) ? `<button class="link" onclick="abrirInsumo(${x.id})">editar</button>${x.emUso?'':`<button class="link del" onclick="excluirInsumo(${x.id})">excluir</button>`}` : `<button class="link" onclick="abrirInsumo(${x.id})">ver</button>`}</td>
+          <td class="acoes">${x.fonte==='sinapi' && x.semPreco ? `<button class="link" onclick="abrirInsumo(${x.id})">informar preço</button>` : podeEditar(x) ? `<button class="link" onclick="abrirInsumo(${x.id})">editar</button>${x.emUso?'':`<button class="link del" onclick="excluirInsumo(${x.id})">excluir</button>`}` : `<button class="link" onclick="abrirInsumo(${x.id})">ver</button>`}</td>
         </tr>`).join('')}</tbody></table>`) : '<div class="empty">Nenhum insumo cadastrado.</div>'}
     </div>
 
@@ -1463,7 +1473,7 @@ function renderCadastros(){
       ${comps.length ? tbl(`<table><thead><tr><th>Código</th><th>Serviço</th><th>Unid.</th><th class="num">Custo unit.</th><th>Onde vale</th><th></th></tr></thead><tbody id="tb-comp">
         ${comps.map(c=>{ const aberto = compAbertas.has(c.id); return `<tr data-busca="${esc(norm(c.codigo+' '+c.descricao))}">
           <td class="codigo">${esc(c.codigo)}</td>
-          <td>${esc(c.descricao)} ${c.referencia?'<span class="tag ref" title="Coeficientes aproximados: confira antes de usar">referência</span>':''}<br><button class="link" onclick="toggleComp(${c.id})">${aberto?'esconder insumos':'ver insumos ('+c.itens.length+')'}</button></td>
+          <td>${esc(c.descricao)} ${c.fonte==='sinapi'?`<div class="codigo" style="white-space:normal;">Custo SINAPI publicado: ${fmtMoney(c.custoPublicado)}${c.pctSp>0?` · ${Math.round(c.pctSp*100)}% do custo com preço de São Paulo`:''}${c.semPreco?` · <b>${c.semPreco} insumo(s) sem preço</b>`:''}</div>`:''} ${c.referencia?'<span class="tag ref" title="Coeficientes aproximados: confira antes de usar">referência</span>':''}<br><button class="link" onclick="toggleComp(${c.id})">${aberto?'esconder insumos':'ver insumos ('+c.itens.length+')'}</button></td>
           <td class="mono">${esc(c.unidade)}</td><td class="num">${fmtMoney(c.custo)}</td><td>${tagEscopo(c)}</td>
           <td class="acoes">${podeEditar(c) ? `<button class="link" onclick="abrirComposicao(${c.id})">editar</button>` : `<button class="link" onclick="abrirComposicao(${c.id})">ver</button>`}<button class="link" onclick="duplicarComposicao(${c.id})">duplicar${c.base?' p/ esta obra':''}</button>${podeEditar(c)?`<button class="link del" onclick="excluirComposicao(${c.id})">excluir</button>`:''}</td>
         </tr>${aberto ? `<tr class="origem-row"><td colspan="6">${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th class="num">Coeficiente</th><th class="num">Preço</th><th class="num">Custo</th></tr></thead><tbody>
@@ -1573,6 +1583,124 @@ function setModoOrc(m){
   orcDraft.modo = m;
   document.getElementById('orc-modo-comp').hidden = m!=='comp';
   document.getElementById('orc-modo-verba').hidden = m!=='verba';
+  document.getElementById('orc-modo-sinapi').hidden = m!=='sinapi';
+  if(m==='sinapi') sinCarregarRefs();
+}
+
+/* ---- Pelo SINAPI: busca e prévia (os dados do SINAPI NÃO ficam no estado) ---- */
+const sinDraft = {refs:null, uf:'', base:'', regime:'', q:'', semCusto:false, res:null, off:0, sel:null, prev:null, timer:null};
+const REGIME_NOME = {sd:'sem desoneração', cd:'com desoneração', se:'sem encargos sociais'};
+const mesAno = b => b ? b.slice(5,7)+'/'+b.slice(0,4) : '';
+async function apiLer(url){
+  try{
+    const r = await fetch(url, {credentials:'same-origin'});
+    if(r.status === 401){ location.href = '/conta/login/?next=/'; return null; }
+    let j = null; try{ j = await r.json(); }catch(e){}
+    if(!r.ok || !j){ toast('err', 'SINAPI', `<div>${esc(j && j.erro || 'Tente de novo em instantes.')}</div>`); return null; }
+    return j;
+  }catch(e){ toast('err','Sem conexão','<div>Não foi possível falar com o servidor.</div>'); return null; }
+}
+function sinAjustar(){
+  const R = sinDraft.refs || [];
+  const ufs = [...new Set(R.map(r=>r.uf))];
+  if(!ufs.includes(sinDraft.uf)) sinDraft.uf = ufs.includes(state.obra.uf) ? state.obra.uf : (ufs[0]||'');
+  const bases = [...new Set(R.filter(r=>r.uf===sinDraft.uf).map(r=>r.data_base))].sort().reverse();
+  if(!bases.includes(sinDraft.base)) sinDraft.base = bases[0]||'';
+  const regs = [...new Set(R.filter(r=>r.uf===sinDraft.uf && r.data_base===sinDraft.base).map(r=>r.regime))];
+  if(!regs.includes(sinDraft.regime)) sinDraft.regime = regs.includes(state.obra.regimeSinapi) ? state.obra.regimeSinapi : (regs[0]||'');
+  return {ufs, bases, regs};
+}
+async function sinCarregarRefs(){
+  if(sinDraft.refs) return;
+  const j = await apiLer('/api/sinapi/referencias'); if(!j) return;
+  sinDraft.refs = j.referencias; sinDesenhar();
+}
+function sinapiBloco(){ return `<div id="sin-corpo">${sinCorpo()}</div>`; }
+function sinCorpo(){
+  if(!sinDraft.refs) return '<p class="formhint">Carregando as referências do SINAPI…</p>';
+  if(!sinDraft.refs.length) return '<p class="formhint">Nenhum mês do SINAPI foi carregado ainda. O administrador carrega o arquivo da Caixa (veja o README).</p>';
+  const {ufs, bases, regs} = sinAjustar();
+  const op = (lista, atual, nome) => lista.map(v=>`<option value="${v}" ${v===atual?'selected':''}>${nome?nome(v):v}</option>`).join('');
+  return `<p class="formhint">Composições oficiais do SINAPI (Caixa). Ao usar uma, o Prumo <b>copia</b> a composição e os insumos para a sua obra; o preço fica congelado no orçamento.</p>
+    <div class="formgrid">
+      <div><label for="sin-uf">UF</label><select id="sin-uf" onchange="sinMudou('uf',this.value)">${op(ufs, sinDraft.uf)}</select></div>
+      <div><label for="sin-base">Mês de referência</label><select id="sin-base" onchange="sinMudou('base',this.value)">${op(bases, sinDraft.base, mesAno)}</select></div>
+      <div><label for="sin-reg">Regime</label><select id="sin-reg" onchange="sinMudou('regime',this.value)">${op(regs, sinDraft.regime, r=>REGIME_NOME[r]||r)}</select></div>
+      <div style="grid-column:span 2;"><label for="sin-q">Buscar serviço</label><input id="sin-q" type="search" placeholder="Ex: alvenaria bloco cerâmico, contrapiso" value="${esc(sinDraft.q)}" oninput="sinDigitou(this.value)"></div>
+      <div><label for="f-orc-sqtd">Quantidade</label><input id="f-orc-sqtd" type="number" step="0.01" min="0" inputmode="decimal"></div>
+    </div>
+    <div id="sin-res">${sinResultados()}</div>
+    <div id="sin-prev">${sinPrevia()}</div>
+    <p class="formhint">Fonte: SINAPI/Caixa Econômica Federal.</p>`;
+}
+function sinDesenhar(){
+  const el = document.getElementById('sin-corpo'); if(!el) return;
+  const qtd = val('f-orc-sqtd'); el.innerHTML = sinCorpo(); const n = document.getElementById('f-orc-sqtd'); if(n && qtd) n.value = qtd;
+}
+function sinMudou(campo, v){
+  sinDraft[campo] = v; sinDraft.res = null; sinDraft.sel = null; sinDraft.prev = null; sinDraft.off = 0;
+  sinDesenhar(); if(norm(sinDraft.q).length>=2) sinBuscar();
+}
+function sinDigitou(v){
+  sinDraft.q = v; clearTimeout(sinDraft.timer);
+  sinDraft.timer = setTimeout(()=>{ sinDraft.off = 0; sinBuscar(); }, 350);
+}
+async function sinBuscar(){
+  const q = sinDraft.q.trim();
+  if(norm(q).length < 2){ sinDraft.res = null; document.getElementById('sin-res').innerHTML = sinResultados(); return; }
+  const u = new URLSearchParams({q, uf:sinDraft.uf, base:sinDraft.base, regime:sinDraft.regime, offset:sinDraft.off, limite:10});
+  const j = await apiLer('/api/sinapi/composicoes?'+u); if(!j) return;
+  if(q !== sinDraft.q.trim()) return;
+  sinDraft.res = j; const el = document.getElementById('sin-res'); if(el) el.innerHTML = sinResultados();
+}
+function sinPagina(d){ sinDraft.off = Math.max(0, sinDraft.off + d*10); sinBuscar(); }
+function sinResultados(){
+  const r = sinDraft.res;
+  if(!r) return norm(sinDraft.q).length ? '' : '<p class="formhint">Digite pelo menos 2 letras para buscar.</p>';
+  if(!r.itens.length) return '<div class="empty">Nenhum serviço encontrado com custo nesta referência.</div>';
+  return tbl(`<table class="mini sin-res"><thead><tr><th>Código</th><th>Serviço</th><th>Unid.</th><th class="num">Custo SINAPI</th></tr></thead><tbody>
+    ${r.itens.map(c=>`<tr onclick="sinVer(${c.codigo})" ${sinDraft.sel===c.codigo?'style="background:var(--accent-soft)"':''}><td class="codigo">${c.codigo}</td><td>${esc(c.descricao)}<div class="codigo">${esc(c.grupo)}</div></td><td class="mono">${esc(c.unidade)}</td><td class="num">${fmtMoney(c.custo)}${c.pct_as>0?` <span class="tag sp" title="Parte do custo usa preço de São Paulo">${Math.round(c.pct_as*100)}% SP</span>`:''}</td></tr>`).join('')}
+    </tbody></table>`) + `<div class="row" style="margin:6px 14px;gap:8px;align-items:center;"><span class="codigo">${r.total} resultado(s) · ${sinDraft.off+1}–${sinDraft.off+r.itens.length}</span>
+      <button class="ghost" ${sinDraft.off?'':'disabled'} onclick="sinPagina(-1)">Anteriores</button><button class="ghost" ${sinDraft.off+r.itens.length<r.total?'':'disabled'} onclick="sinPagina(1)">Próximos</button></div>`;
+}
+async function sinVer(codigo){
+  sinDraft.sel = codigo; sinDraft.prev = null;
+  document.getElementById('sin-prev').innerHTML = '<p class="formhint">Carregando…</p>'; document.getElementById('sin-res').innerHTML = sinResultados();
+  const u = new URLSearchParams({uf:sinDraft.uf, base:sinDraft.base, regime:sinDraft.regime});
+  const j = await apiLer(`/api/sinapi/composicoes/${codigo}?`+u); if(!j) return;
+  sinDraft.prev = j.composicao; document.getElementById('sin-prev').innerHTML = sinPrevia();
+}
+function sinPrevia(){
+  const c = sinDraft.prev; if(!c) return '';
+  const q = parseFloat(val('f-orc-sqtd'))||0;
+  return `<div class="preview"><div class="tot"><span><b>SINAPI ${c.codigo}</b> · ${esc(c.unidade)}</span><span>Custo SINAPI publicado: <b>${c.custo==null?'—':fmtMoney(c.custo)}</b></span>${c.custo_calculado!=null?`<span>Calculado pelo Prumo: <b>${fmtMoney(c.custo_calculado)}</b></span>`:''}</div>
+    <div style="font-size:13px;margin-bottom:6px;">${esc(c.descricao)}</div>
+    ${c.avisos.map(a=>`<div class="sin-aviso">${esc(a)}</div>`).join('')}
+    ${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th>Unid.</th><th class="num">Coef.</th><th class="num">Preço</th></tr></thead><tbody>
+      ${c.itens.map(i=>`<tr><td><span class="codigo">${i.codigo_insumo}</span> ${esc(i.descricao)}</td><td class="mono">${esc(i.unidade)}</td><td class="num">${fmtCoef(i.coef)}</td>
+        <td class="num">${i.preco==null?'<span class="tag sp">sem preço</span>':fmtMoney(i.preco)+(i.origem_preco==='sp'?' <span class="tag sp" title="Sem coleta na sua UF: preço de São Paulo">SP</span>':'')}</td></tr>`).join('')}
+      </tbody></table>`)}
+    <div class="form-actions" style="padding:8px 0 0;"><button class="primary" onclick="sinUsar()">Usar este serviço${q?'':' (informe a quantidade)'}</button></div></div>`;
+}
+async function sinUsar(){
+  const sel = val('f-orc-etapa');
+  if(!sel){ erro('Escolha a etapa.'); return; }
+  const c = sinDraft.prev, qtd = parseFloat(val('f-orc-sqtd'));
+  if(!c){ erro('Busque e escolha um serviço do SINAPI.'); return; }
+  if(!(qtd>0)){ erro('A quantidade precisa ser maior que zero.'); return; }
+  const etapa = sel.startsWith('id:') ? {etapaId: parseInt(sel.slice(3))} : {etapa: sel.slice(5)};
+  const faltam = c.itens.filter(i=>i.preco==null).length;
+  const seguir = async ()=>{
+    const r1 = await api('POST', '/api/sinapi/importar', {codigo:c.codigo, uf:sinDraft.uf, base:sinDraft.base, regime:sinDraft.regime});
+    if(!r1) return;
+    const r2 = await api('POST', '/api/orcamento', {...etapa, composicaoId:r1.composicaoId, qtd, observacao: val('f-orc-obs').trim()});
+    if(!r2) return;
+    const it = state.orcamento.find(i=>i.id===r2.id); if(it) orcDraft.etapa = 'id:'+it.etapaId;
+    renderAll(); const fb = document.getElementById('form-orc'); if(fb) fb.open = true;
+    toast(faltam ? 'info' : 'ok', 'Serviço do SINAPI adicionado', `<div>${esc(c.descricao)}: ${fmtNum(qtd)} ${esc(c.unidade)}.</div>${(r1.avisos||[]).map(a=>`<div>${esc(a)}</div>`).join('')}`);
+  };
+  if(faltam) confirmar('Insumos sem preço', `${faltam} insumo(s) desta composição não têm preço no SINAPI e entram com R$ 0,00 até você informar o preço em Cadastros. O orçamento do serviço ficará subestimado até lá. Continuar?`, 'Continuar', seguir);
+  else seguir();
 }
 function filtrarComposicoesOrc(v){
   orcDraft.filtro = v;
@@ -1615,7 +1743,7 @@ function renderOrcamento(){
                 const aberto = abertos.has(i.id), insAb = insAbertos.has(i.id);
                 return `<tr>
                   <td class="codigo">${i.codigo ? esc(i.codigo) : `<span class="tag verba">verba</span>`}</td>
-                  <td>${esc(i.servico)}${i.observacao?`<div class="codigo" style="white-space:normal;">${esc(i.observacao)}</div>`:''}
+                  <td>${esc(i.servico)}${i.origem?`<div class="codigo" style="white-space:normal;">${esc(i.origem)}</div>`:''}${i.observacao?`<div class="codigo" style="white-space:normal;">${esc(i.observacao)}</div>`:''}
                     ${i.insumos.length ? `<br><button class="link" onclick="toggleInsumos(${i.id})">${insAb?'esconder insumos':'insumos ('+i.insumos.length+')'}</button>` : ''}</td>
                   <td class="mono">${esc(i.unidade)}</td>
                   <td class="num">${fmtNum(i.qtd)}</td>
@@ -1647,8 +1775,10 @@ function renderOrcamento(){
       </div>
       <div class="seg" role="radiogroup" aria-label="Como orçar o serviço">
         <label><input type="radio" name="orc-modo" value="comp" ${orcDraft.modo==='comp'?'checked':''} onchange="setModoOrc('comp')"> Pela composição (recomendado)</label>
+        <label><input type="radio" name="orc-modo" value="sinapi" ${orcDraft.modo==='sinapi'?'checked':''} onchange="setModoOrc('sinapi')"> Pelo SINAPI</label>
         <label><input type="radio" name="orc-modo" value="verba" ${orcDraft.modo==='verba'?'checked':''} onchange="setModoOrc('verba')"> Por verba (valor fechado)</label>
       </div>
+      <div id="orc-modo-sinapi" ${orcDraft.modo==='sinapi'?'':'hidden'}>${sinapiBloco()}</div>
       <div id="orc-modo-comp" ${orcDraft.modo==='comp'?'':'hidden'}>
         <div class="formgrid">
           <div><label for="f-orc-busca">Buscar composição</label><input id="f-orc-busca" type="search" placeholder="Ex: alvenaria, C-0009" value="${esc(orcDraft.filtro)}" oninput="filtrarComposicoesOrc(this.value)"></div>
@@ -1689,6 +1819,7 @@ function renderOrcamento(){
 }
 
 async function handleAddOrcamento(){
+  if(orcDraft.modo==='sinapi'){ sinUsar(); return; }
   const sel = val('f-orc-etapa');
   if(!sel){ erro('Escolha a etapa.'); return; }
   const etapa = sel.startsWith('id:') ? {etapaId: parseInt(sel.slice(3))} : {etapa: sel.slice(5)};
@@ -2428,7 +2559,7 @@ function renderAll(){
     });
   });
   document.querySelectorAll('details.intro').forEach(d=> d.addEventListener('toggle', ()=> setPref('intro-'+d.dataset.intro, d.open)));
-  if(currentTab==='orcamento') atualizarPreviewOrc();
+  if(currentTab==='orcamento'){ atualizarPreviewOrc(); if(orcDraft.modo==='sinapi') sinCarregarRefs(); }
   if(currentTab==='baixa') atualizarDicaConsumo();
   salvar();
 }

@@ -22,6 +22,8 @@ class Obra(models.Model):
     cliente = models.CharField(max_length=200, blank=True)
     prazo = models.DateField(null=True, blank=True)
     valor_contratado = models.DecimalField(max_digits=14, decimal_places=2, default=D0)
+    uf = models.CharField("UF (SINAPI)", max_length=2, default="SE")
+    regime_sinapi = models.CharField("regime (SINAPI)", max_length=2, default="sd")
     exemplo = models.BooleanField(default=False, help_text="Dados de exemplo carregados automaticamente")
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
@@ -61,15 +63,24 @@ class Etapa(models.Model):
 class Insumo(models.Model):
     """O que um serviço consome: material, mão de obra, equipamento ou empreitada.
     Sem obra = base geral (todas as obras usam). Com obra = só daquela obra."""
+    PROPRIO, SINAPI = "proprio", "sinapi"
+    FONTES = [(PROPRIO, "Próprio"), (SINAPI, "SINAPI")]
     MATERIAL, MAO_DE_OBRA, EQUIPAMENTO, EMPREITADA = "material", "mao-de-obra", "equipamento", "empreitada"
     TIPOS = [(MATERIAL, "Material"), (MAO_DE_OBRA, "Mão de obra"), (EQUIPAMENTO, "Equipamento"), (EMPREITADA, "Empreitada / terceiro")]
     obra = models.ForeignKey(Obra, null=True, blank=True, on_delete=models.CASCADE, related_name="insumos",
                              help_text="Vazio = base geral, disponível para todas as obras.")
     codigo = models.CharField("código", max_length=30)
-    descricao = models.CharField("descrição", max_length=200)
+    descricao = models.CharField("descrição", max_length=400)
     unidade = models.CharField(max_length=20)
     tipo = models.CharField(max_length=12, choices=TIPOS, default=MATERIAL)
     preco = models.DecimalField("preço de referência", max_digits=14, decimal_places=4, default=D0)
+    fonte = models.CharField(max_length=10, choices=FONTES, default=PROPRIO)
+    codigo_fonte = models.CharField("código na fonte", max_length=30, blank=True)
+    uf = models.CharField(max_length=2, blank=True)
+    data_base = models.DateField(null=True, blank=True)
+    regime = models.CharField(max_length=2, blank=True)
+    sem_preco = models.BooleanField("sem preço na fonte", default=False)
+    origem_preco = models.CharField(max_length=5, blank=True, help_text="local, sp (preço de São Paulo usado como substituto) ou vazio")
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -88,8 +99,15 @@ class Composicao(models.Model):
     obra = models.ForeignKey(Obra, null=True, blank=True, on_delete=models.CASCADE, related_name="composicoes",
                              help_text="Vazio = base geral, disponível para todas as obras.")
     codigo = models.CharField("código", max_length=30)
-    descricao = models.CharField("descrição", max_length=200)
+    descricao = models.CharField("descrição", max_length=400)
     unidade = models.CharField(max_length=20)
+    fonte = models.CharField(max_length=10, choices=Insumo.FONTES, default=Insumo.PROPRIO)
+    codigo_fonte = models.CharField("código na fonte", max_length=30, blank=True)
+    uf = models.CharField(max_length=2, blank=True)
+    data_base = models.DateField(null=True, blank=True)
+    regime = models.CharField(max_length=2, blank=True)
+    custo_publicado = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    pct_as = models.DecimalField("fração do custo com preço de São Paulo", max_digits=7, decimal_places=4, null=True, blank=True)
     referencia = models.BooleanField("referência da biblioteca", default=False,
                                      help_text="Veio da biblioteca inicial do Prumo. Coeficientes aproximados: confira antes de usar.")
     observacao = models.CharField("observação", max_length=300, blank=True)
@@ -115,7 +133,7 @@ class Composicao(models.Model):
 class ItemComposicao(models.Model):
     composicao = models.ForeignKey(Composicao, on_delete=models.CASCADE, related_name="itens")
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name="usos")
-    coeficiente = models.DecimalField(max_digits=14, decimal_places=6, help_text="Quantidade do insumo para 1 unidade do serviço")
+    coeficiente = models.DecimalField(max_digits=20, decimal_places=10, help_text="Quantidade do insumo para 1 unidade do serviço")
 
     class Meta:
         ordering = ["id"]
@@ -133,7 +151,8 @@ class ItemOrcamento(models.Model):
     etapa = models.ForeignKey(Etapa, on_delete=models.PROTECT, related_name="itens")
     composicao = models.ForeignKey(Composicao, null=True, blank=True, on_delete=models.SET_NULL, related_name="usos_orcamento")
     codigo = models.CharField("código da composição", max_length=30, blank=True)
-    servico = models.CharField(max_length=200)
+    servico = models.CharField(max_length=400)
+    origem = models.CharField("origem do preço", max_length=120, blank=True, help_text="Ex.: SINAPI 87878 · SE · 09/2026 · sem desoneração")
     observacao = models.CharField("observação", max_length=200, blank=True)
     unidade = models.CharField(max_length=20)
     quantidade = models.DecimalField(max_digits=14, decimal_places=4)
@@ -157,7 +176,7 @@ class InsumoPrevisto(models.Model):
     Mudar o preço do insumo depois não altera o orçado (a não ser que você peça para atualizar)."""
     item = models.ForeignKey(ItemOrcamento, on_delete=models.CASCADE, related_name="insumos")
     insumo = models.ForeignKey(Insumo, on_delete=models.PROTECT, related_name="previstos")
-    coeficiente = models.DecimalField(max_digits=14, decimal_places=6)
+    coeficiente = models.DecimalField(max_digits=20, decimal_places=10)
     preco_unitario = models.DecimalField(max_digits=14, decimal_places=4)
 
     class Meta:
@@ -186,7 +205,7 @@ class Material(models.Model):
     """Saldo de um material no estoque desta obra. Ligado a um insumo do cadastro."""
     obra = models.ForeignKey(Obra, on_delete=models.CASCADE, related_name="materiais")
     insumo = models.ForeignKey(Insumo, null=True, blank=True, on_delete=models.PROTECT, related_name="estoques")
-    nome = models.CharField(max_length=200)
+    nome = models.CharField(max_length=400)
     unidade = models.CharField(max_length=20)
     saldo = models.DecimalField(max_digits=16, decimal_places=4, default=D0)
     custo_medio = models.DecimalField(max_digits=16, decimal_places=6, default=D0)

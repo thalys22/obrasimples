@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from functools import wraps
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def app(request):
     return HttpResponse(APP_HTML.read_bytes(), content_type="text/html; charset=utf-8")
 
 
-def api(metodos):
+def api(metodos, com_estado=True):
     """Exige login, lê o JSON, carrega a obra do usuário e devolve o estado atualizado."""
     def deco(fn):
         @wraps(fn)
@@ -44,6 +45,8 @@ def api(metodos):
                 extra = fn(request, obra, corpo, *args, **kwargs) or {}
             except S.RegraNegocio as e:
                 return JsonResponse({"erro": str(e)}, status=400)
+            if not com_estado:
+                return JsonResponse(extra)
             obra.refresh_from_db()
             return JsonResponse({"estado": S.estado(obra, request.user), **extra})
         return inner
@@ -230,3 +233,54 @@ def selecionar_obra(request):
         return JsonResponse({"erro": "Você não tem acesso a essa obra."}, status=400)
     request.session["obra_id"] = obra.pk
     return JsonResponse({"estado": S.estado(obra, request.user)})
+
+
+# ---------------------------------------------------------------- SINAPI (base de consulta; nada disso entra no `estado`)
+def _sinapi():
+    from sinapi import servico
+    return servico
+
+
+def _com_erro_sinapi(fn):
+    try:
+        return fn()
+    except _sinapi().SinapiErro as e:
+        raise S.RegraNegocio(str(e))
+
+
+def _num(v):
+    """Decimal -> float (o JSON padrão do Django serializaria Decimal como texto)."""
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, dict):
+        return {k: _num(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_num(x) for x in v]
+    return v
+
+
+@api(["GET"], com_estado=False)
+def sinapi_referencias(request, obra, d):
+    return {"referencias": _sinapi().referencias_disponiveis(), "padrao": {"uf": obra.uf, "regime": obra.regime_sinapi}}
+
+
+@api(["GET"], com_estado=False)
+def sinapi_buscar(request, obra, d):
+    g = request.GET
+    return _num(_com_erro_sinapi(lambda: _sinapi().buscar_composicoes(
+        g.get("q", ""), g.get("uf") or obra.uf, g.get("base", ""), g.get("regime") or obra.regime_sinapi,
+        grupo=g.get("grupo") or None, limite=g.get("limite", 20), deslocamento=g.get("offset", 0),
+        incluir_sem_custo=g.get("semCusto") == "1")))
+
+
+@api(["GET"], com_estado=False)
+def sinapi_composicao(request, obra, d, codigo):
+    g = request.GET
+    return {"composicao": _num(_com_erro_sinapi(lambda: _sinapi().obter_composicao(
+        codigo, g.get("uf") or obra.uf, g.get("base", ""), g.get("regime") or obra.regime_sinapi)))}
+
+
+@api(["POST"])
+def sinapi_importar(request, obra, d):
+    comp, avisos = S.importar_sinapi_composicao(obra, d)
+    return {"composicaoId": comp.pk, "avisos": avisos}

@@ -299,3 +299,10 @@ Código: `sinapi/` (`models.py`, `leitor.py`, `carga.py`, `servico.py`, `mapas.p
 5. O comando valida o mês das abas contra `--base`, mas **não** valida contagens fixas (4.878/10.599/56.568): relata as contagens e confere que CSx e Analítico têm as mesmas composições.
 
 **Ainda não verificado:** termos de uso da Caixa, limite de armazenamento e extensões do Neon, download automático, segundo mês de arquivo (estabilidade do layout), teste de carga no Neon real (só PostgreSQL local).
+
+## 17. Fase 2 implementada (15/10/2026)
+
+- Migração `obras/0006_sinapi_campos`: `Insumo`/`Composicao` ganham `fonte`, `codigo_fonte`, `uf`, `data_base`, `regime` (+ `sem_preco`/`origem_preco` no insumo, `custo_publicado`/`pct_as` na composição); `ItemOrcamento.origem`; `Obra.uf` (padrão SE) e `regime_sinapi` (padrão sd). (O desenho dizia 0005; essa já era do estoque.)
+- **Achado medido que mudou o schema:** com coeficiente de 6 casas, ~10% das composições (40 de 400 amostradas) saíam da tolerância de custo; com 8 casas, 1 em 400. Ficou em 10 casas (`ItemComposicao` e `InsumoPrevisto`). Além disso 1.018 composições e 192 insumos têm descrição acima de 200 caracteres: descrições (insumo, composição, serviço do orçamento, material) passaram para 400.
+- Insumo já existente na obra com outra data-base é mantido (com aviso); composição já importada em outra data-base exige "atualizar" (Fase 3, não feita).
+- Verificado no navegador com o arquivo real (SE/sd): busca, prévia com insumos e etiquetas "SP"/"sem preço", uso no orçamento com origem congelada, cadastro com custo publicado e %SP, edição bloqueada. 101 testes (obras + sinapi) em SQLite e PostgreSQL 16.

@@ -190,7 +190,7 @@ templates/         telas de login e troca de senha
 
 ## Base SINAPI (consulta)
 
-O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). Ainda não aparece na tela do Prumo (integração é a próxima fase). Para carregar um mês, **no seu computador** (não na Vercel), com `DATABASE_URL` apontando para o banco:
+O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). No Orçamento, "Adicionar serviço → Pelo SINAPI" busca a composição, mostra os insumos e preços (com aviso quando o preço é de São Paulo ou falta) e copia tudo para a obra. Composições e insumos do SINAPI não são editáveis (use Duplicar). A UF e o regime padrão ficam em Dados da obra. Para carregar um mês, **no seu computador** (não na Vercel), com `DATABASE_URL` apontando para o banco:
 
 ```
 pip install -r requirements-etl.txt

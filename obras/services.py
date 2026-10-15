@@ -107,6 +107,15 @@ def atualizar_obra(obra, dados):
         obra.prazo = data_iso(dados["prazo"], "prazo", obrigatoria=False)
     if "valorContratado" in dados:
         obra.valor_contratado = dec(dados["valorContratado"] or 0, "o valor contratado")
+    if "uf" in dados:
+        uf = str(dados["uf"] or "").strip().upper()
+        if len(uf) != 2 or not uf.isalpha():
+            raise RegraNegocio("A UF deve ter 2 letras (ex.: SE).")
+        obra.uf = uf
+    if "regimeSinapi" in dados:
+        if dados["regimeSinapi"] not in ("sd", "cd"):
+            raise RegraNegocio("Regime inválido. Use sd (sem desoneração) ou cd (com desoneração).")
+        obra.regime_sinapi = dados["regimeSinapi"]
     obra.save()
 
 
@@ -254,18 +263,32 @@ def salvar_insumo(obra, usuario, d, pk=None):
     if pk:
         ins = pegar_visivel(insumos_visiveis(obra), pk, "Insumo")
         _pode_alterar(ins, obra, usuario, "insumo")
+        if ins.fonte == Insumo.SINAPI:
+            return _preco_insumo_sinapi(ins, d)
     else:
         ins = Insumo(obra=_escopo(obra, usuario, d.get("escopo")))
     prefixo = "I-" if ins.obra_id is None else "IP-"
     codigo = texto(d.get("codigo"), "o código", obrigatorio=False, maximo=30) or (ins.codigo or proximo_codigo(Insumo, ins.obra, prefixo))
     _codigo_livre(Insumo, ins.obra, codigo, exceto=ins if ins.pk else None)
     ins.codigo = codigo
-    ins.descricao = texto(d.get("descricao"), "a descrição do insumo")
+    ins.descricao = texto(d.get("descricao"), "a descrição do insumo", maximo=400)
     ins.unidade = texto(d.get("unidade"), "a unidade", maximo=20)
     ins.tipo = tipo_insumo(d.get("tipo"))
     ins.preco = dec(d.get("preco") if d.get("preco") not in (None, "") else 0, "o preço")
     if ins.preco < 0:
         raise RegraNegocio("O preço não pode ser negativo.")
+    ins.save()
+    return ins
+
+
+def _preco_insumo_sinapi(ins, d):
+    """Insumo do SINAPI é travado (rastreabilidade); só o preço pode ser preenchido à mão quando faltava."""
+    if not ins.sem_preco:
+        raise RegraNegocio("Esse insumo vem do SINAPI e não pode ser editado. Se precisar de outro preço, crie um insumo próprio.")
+    preco = dec(d.get("preco"), "o preço")
+    if preco <= 0:
+        raise RegraNegocio("Informe o preço (maior que zero) para completar esse insumo.")
+    ins.preco, ins.sem_preco, ins.origem_preco = preco, False, ""
     ins.save()
     return ins
 
@@ -307,13 +330,15 @@ def salvar_composicao(obra, usuario, d, pk=None):
     if pk:
         comp = pegar_visivel(composicoes_visiveis(obra), pk, "Composição")
         _pode_alterar(comp, obra, usuario, "composição")
+        if comp.fonte == Insumo.SINAPI:
+            raise RegraNegocio("Essa composição vem do SINAPI e não pode ser editada. Use Duplicar para criar uma cópia própria e ajustar.")
     else:
         comp = Composicao(obra=_escopo(obra, usuario, d.get("escopo")))
     prefixo = "C-" if comp.obra_id is None else "CP-"
     codigo = texto(d.get("codigo"), "o código", obrigatorio=False, maximo=30) or (comp.codigo or proximo_codigo(Composicao, comp.obra, prefixo))
     _codigo_livre(Composicao, comp.obra, codigo, exceto=comp if comp.pk else None)
     comp.codigo = codigo
-    comp.descricao = texto(d.get("descricao"), "a descrição do serviço")
+    comp.descricao = texto(d.get("descricao"), "a descrição do serviço", maximo=400)
     comp.unidade = texto(d.get("unidade"), "a unidade", maximo=20)
     comp.observacao = texto(d.get("observacao"), "a observação", obrigatorio=False, maximo=300)
     comp.save()
@@ -332,10 +357,58 @@ def excluir_composicao(obra, usuario, pk):
 def duplicar_composicao(obra, pk):
     """Copia uma composição (normalmente da base geral) para a base desta obra, para ajustar."""
     orig = pegar_visivel(composicoes_visiveis(obra), pk, "Composição")
-    nova = Composicao.objects.create(obra=obra, codigo=proximo_codigo(Composicao, obra, "CP-"), descricao=orig.descricao[:200],
+    nova = Composicao.objects.create(obra=obra, codigo=proximo_codigo(Composicao, obra, "CP-"), descricao=orig.descricao[:400],
                                      unidade=orig.unidade, observacao=f"Cópia de {orig.codigo}. {orig.observacao}"[:300])
     ItemComposicao.objects.bulk_create([ItemComposicao(composicao=nova, insumo=i.insumo, coeficiente=i.coeficiente) for i in orig.itens.all()])
     return nova
+
+
+@transaction.atomic
+def importar_sinapi_composicao(obra, d):
+    """Copia uma composição do SINAPI (com insumos e coeficientes já achatados) para a obra.
+    Nunca há ligação viva com a base SINAPI: o que entra é uma cópia, com o preço da data-base escolhida."""
+    from sinapi import servico as sinapi
+    try:
+        uf = str(d.get("uf") or obra.uf).upper()
+        regime = d.get("regime") or obra.regime_sinapi
+        info = sinapi.obter_composicao(d.get("codigo"), uf, d.get("base"), regime)
+    except sinapi.SinapiErro as e:
+        raise RegraNegocio(str(e))
+    ref = info["referencia"]
+    data_base = date.fromisoformat(ref["data_base"] + "-01")
+    codigo = f"SINAPI-{info['codigo']}"
+    existente = Composicao.objects.filter(obra=obra, codigo=codigo).first()
+    if existente:
+        if (existente.uf, existente.data_base, existente.regime) == (ref["uf"], data_base, ref["regime"]):
+            return existente, ["Essa composição já estava na obra; nada foi alterado."]
+        raise RegraNegocio(f"Essa composição já está na obra com a referência {rotulo_fonte(existente)}. "
+                           f"Para trocar de data-base, use Atualizar na composição.")
+    if info["custo"] is None:
+        raise RegraNegocio("O SINAPI não publicou custo para essa composição nessa referência; ela não pode ser importada.")
+    avisos = list(info["avisos"])
+    novos_insumos = {}
+    for it in info["itens"]:
+        cod = f"SINAPI-{it['codigo_insumo']}"
+        ins = Insumo.objects.filter(obra=obra, codigo=cod).first()
+        if ins is None:
+            sem = it["preco"] is None
+            ins = Insumo.objects.create(
+                obra=obra, codigo=cod, descricao=it["descricao"][:400], unidade=it["unidade"][:20], tipo=it["tipo"],
+                preco=D0 if sem else it["preco"], fonte=Insumo.SINAPI, codigo_fonte=str(it["codigo_insumo"]), uf=ref["uf"],
+                data_base=data_base, regime=ref["regime"], sem_preco=sem, origem_preco=it["origem_preco"])
+        elif (ins.uf, ins.data_base, ins.regime) != (ref["uf"], data_base, ref["regime"]):
+            avisos.append(f"O insumo {cod} já existia na obra com a referência {ins.uf} {ins.data_base:%m/%Y} e foi mantido.")
+        novos_insumos[it["codigo_insumo"]] = ins
+    comp = Composicao.objects.create(
+        obra=obra, codigo=codigo, descricao=info["descricao"][:400], unidade=info["unidade"][:20], fonte=Insumo.SINAPI,
+        codigo_fonte=str(info["codigo"]), uf=ref["uf"], data_base=data_base, regime=ref["regime"],
+        custo_publicado=info["custo"], pct_as=info["pct_as"], observacao="Fonte: SINAPI/Caixa."[:300])
+    ItemComposicao.objects.bulk_create([ItemComposicao(composicao=comp, insumo=novos_insumos[i["codigo_insumo"]], coeficiente=i["coef"])
+                                        for i in info["itens"]])
+    faltam = sum(1 for i in novos_insumos.values() if i.sem_preco)
+    if faltam:
+        avisos.append(f"{faltam} insumo(s) ficaram sem preço (R$ 0,00 até você preencher em Cadastros).")
+    return comp, avisos
 
 
 def _linhas(linhas, limite=5000):
@@ -418,6 +491,16 @@ def _congelar(item, comp):
     InsumoPrevisto.objects.bulk_create([InsumoPrevisto(item=item, insumo=i.insumo, coeficiente=i.coeficiente, preco_unitario=i.insumo.preco) for i in itens])
     item.preco_unitario = sum((i.coeficiente * i.insumo.preco for i in itens), D0).quantize(Decimal("0.0001"), ROUND_HALF_UP)
     item.codigo = comp.codigo
+    item.origem = rotulo_fonte(comp)
+
+
+REGIMES_SINAPI = {"sd": "sem desoneração", "cd": "com desoneração", "se": "sem encargos sociais"}
+
+
+def rotulo_fonte(obj):
+    if obj.fonte != Insumo.SINAPI:
+        return ""
+    return f"SINAPI {obj.codigo_fonte} · {obj.uf} · {obj.data_base:%m/%Y} · {REGIMES_SINAPI.get(obj.regime, obj.regime)}"
 
 
 @transaction.atomic
@@ -433,14 +516,14 @@ def adicionar_item(obra, d):
             raise RegraNegocio(f'A composição "{d.get("composicaoCodigo")}" não está cadastrada.')
     obs = texto(d.get("observacao", d.get("insumo")), "a observação", obrigatorio=False)
     if comp:
-        item = ItemOrcamento(obra=obra, etapa=etapa, composicao=comp, servico=texto(d.get("servico") or comp.descricao, "o serviço"),
+        item = ItemOrcamento(obra=obra, etapa=etapa, composicao=comp, servico=texto(d.get("servico") or comp.descricao, "o serviço", maximo=400),
                              observacao=obs, unidade=comp.unidade, quantidade=qtd, preco_unitario=D0)
         item.save()
         _congelar(item, comp)
         item.save()
     else:
         item = ItemOrcamento.objects.create(
-            obra=obra, etapa=etapa, servico=texto(d.get("servico"), "o serviço"), observacao=obs,
+            obra=obra, etapa=etapa, servico=texto(d.get("servico"), "o serviço", maximo=400), observacao=obs,
             unidade=texto(d.get("unidade"), "a unidade", maximo=20),
             preco_unitario=dec(d.get("precoUnit"), "o preço unitário", minimo=D0), quantidade=qtd,
         )
@@ -453,7 +536,7 @@ def atualizar_item(obra, pk, d):
     if "etapaId" in d or "etapa" in d:
         item.etapa = etapa_por(obra, d)
     if "servico" in d:
-        item.servico = texto(d.get("servico"), "o serviço")
+        item.servico = texto(d.get("servico"), "o serviço", maximo=400)
     if "observacao" in d:
         item.observacao = texto(d.get("observacao"), "a observação", obrigatorio=False)
     if "qtd" in d:
@@ -518,7 +601,7 @@ def material_do_insumo(obra, insumo):
     não existe mais entrada manual no estoque."""
     mat = Material.objects.select_for_update().filter(obra=obra, insumo=insumo).first()
     if mat is None:
-        mat = Material.objects.create(obra=obra, insumo=insumo, nome=insumo.descricao[:200], unidade=insumo.unidade)
+        mat = Material.objects.create(obra=obra, insumo=insumo, nome=insumo.descricao[:400], unidade=insumo.unidade)
     return mat
 
 
@@ -722,7 +805,7 @@ def substituir(obra, e):
     for it in e.get("orcamento") or []:
         if not str(it.get("etapa") or "").strip() or not str(it.get("servico") or "").strip():
             continue
-        novo = ItemOrcamento.objects.create(obra=obra, etapa=etapa_por(obra, {"etapa": str(it["etapa"])[:120]}), servico=str(it["servico"])[:200],
+        novo = ItemOrcamento.objects.create(obra=obra, etapa=etapa_por(obra, {"etapa": str(it["etapa"])[:120]}), servico=str(it["servico"])[:400],
                                             observacao=str(it.get("observacao") or it.get("insumo") or "")[:200],
                                             unidade=str(it.get("unidade") or "")[:20], quantidade=num(it.get("qtd")), preco_unitario=num(it.get("precoUnit")))
         comp = por_codigo(comps, it.get("codigo"))
@@ -850,9 +933,13 @@ def catalogo(obra, usuario):
     comps = Composicao.objects.filter(filtro).prefetch_related("itens__insumo")
     return {
         "insumos": [{"id": i.pk, "codigo": i.codigo, "descricao": i.descricao, "unidade": i.unidade, "tipo": i.tipo,
-                     "preco": f(i.preco), "base": i.obra_id is None, "emUso": i.pk in usados} for i in insumos],
+                     "preco": f(i.preco), "base": i.obra_id is None, "emUso": i.pk in usados, "fonte": i.fonte,
+                     "origem": rotulo_fonte(i), "semPreco": i.sem_preco, "origemPreco": i.origem_preco} for i in insumos],
         "composicoes": [{"id": c.pk, "codigo": c.codigo, "descricao": c.descricao, "unidade": c.unidade, "base": c.obra_id is None,
                          "referencia": c.referencia, "observacao": c.observacao, "custo": f(c.custo_unitario),
+                         "fonte": c.fonte, "origem": rotulo_fonte(c), "custoPublicado": None if c.custo_publicado is None else f(c.custo_publicado),
+                         "pctSp": None if c.pct_as is None else f(c.pct_as),
+                         "semPreco": sum(1 for i in c.itens.all() if i.insumo.sem_preco),
                          "itens": [{"insumoId": i.insumo_id, "coef": f(i.coeficiente)} for i in c.itens.all()]} for c in comps],
         "tiposInsumo": [{"id": k, "nome": v} for k, v in Insumo.TIPOS],
         "etapasPadrao": ETAPAS_PADRAO,
@@ -885,10 +972,10 @@ def estado(obra, usuario):
     etapas = list(obra.etapas.all())
     orc = obra.orcamento.select_related("etapa").prefetch_related("insumos")
     return {
-        "obra": {"nome": obra.nome, "cliente": obra.cliente, "prazo": iso(obra.prazo), "valorContratado": f(obra.valor_contratado)},
+        "obra": {"nome": obra.nome, "cliente": obra.cliente, "prazo": iso(obra.prazo), "valorContratado": f(obra.valor_contratado), "uf": obra.uf, "regimeSinapi": obra.regime_sinapi},
         "exemplo": obra.exemplo,
         "orcamento": [{"id": i.pk, "etapaId": i.etapa_id, "etapa": i.etapa.nome, "composicaoId": i.composicao_id, "codigo": i.codigo,
-                       "servico": i.servico, "observacao": i.observacao, "insumo": i.observacao, "unidade": i.unidade,
+                       "servico": i.servico, "observacao": i.observacao, "insumo": i.observacao, "unidade": i.unidade, "origem": i.origem,
                        "qtd": f(i.quantidade), "precoUnit": f(i.preco_unitario),
                        "insumos": [{"insumoId": p.insumo_id, "coef": f(p.coeficiente), "preco": f(p.preco_unitario)} for p in i.insumos.all()]}
                       for i in orc],
