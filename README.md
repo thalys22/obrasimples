@@ -1,6 +1,6 @@
 # Prumo · controle de obra (Django)
 
-> Antes chamado ObraSimples. O repositório e o endereço técnico continuam com o nome antigo.
+> Antes chamado ObraSimples. Endereço: **https://prumoobras.vercel.app** (o antigo, obrasimples.vercel.app, continua funcionando). O repositório no GitHub ainda se chama `obrasimples`.
 
 Controle de obra para pequenas construtoras, agora com **login, banco de dados e painel de administração**.
 
