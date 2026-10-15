@@ -306,3 +306,7 @@ Código: `sinapi/` (`models.py`, `leitor.py`, `carga.py`, `servico.py`, `mapas.p
 - **Achado medido que mudou o schema:** com coeficiente de 6 casas, ~10% das composições (40 de 400 amostradas) saíam da tolerância de custo; com 8 casas, 1 em 400. Ficou em 10 casas (`ItemComposicao` e `InsumoPrevisto`). Além disso 1.018 composições e 192 insumos têm descrição acima de 200 caracteres: descrições (insumo, composição, serviço do orçamento, material) passaram para 400.
 - Insumo já existente na obra com outra data-base é mantido (com aviso); composição já importada em outra data-base exige "atualizar" (Fase 3, não feita).
 - Verificado no navegador com o arquivo real (SE/sd): busca, prévia com insumos e etiquetas "SP"/"sem preço", uso no orçamento com origem congelada, cadastro com custo publicado e %SP, edição bloqueada. 101 testes (obras + sinapi) em SQLite e PostgreSQL 16.
+
+## 18. Alagoas incluída (15/10/2026)
+
+Escopo inicial agora é **SE, BA e AL** (regimes sd e cd). Nenhuma mudança de código: a UF é parâmetro da carga. Medido com o arquivo 09/2026: AL/sd 8.368 dentro da tolerância, 71 até 5%, 4 acima de 5%; AL/cd 8.362/79/2. As 4 acima são composições de centavos (R$ 0,25 a R$ 0,57, diferença de até 3 centavos), abaixo do limite de bloqueio de 1%. AL/sd: 1.622 de 4.878 preços (33%) vêm de São Paulo. Carga das 3 UFs: 26 s.

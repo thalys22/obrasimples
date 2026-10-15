@@ -194,7 +194,7 @@ O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e 
 
 ```
 pip install -r requirements-etl.txt
-python manage.py carregar_sinapi --arquivo SINAPI_Referencia_2026_09.xlsx --base 2026-09 --uf SE BA --regime sd cd
+python manage.py carregar_sinapi --arquivo SINAPI_Referencia_2026_09.xlsx --base 2026-09 --uf SE BA AL --regime sd cd
 ```
 
 A carga é tudo ou nada, confere o custo de cada composição contra o publicado e não repete o mesmo arquivo.
