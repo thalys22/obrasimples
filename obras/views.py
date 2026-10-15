@@ -70,9 +70,75 @@ def orcamento_criar(request, obra, d):
     return {"id": S.adicionar_item(obra, d).pk}
 
 
-@api(["DELETE"])
-def orcamento_excluir(request, obra, d, pk):
-    S.excluir_item(obra, pk)
+@api(["DELETE", "POST"])
+def orcamento_item(request, obra, d, pk):
+    if request.method == "DELETE":
+        S.excluir_item(obra, pk)
+    else:
+        S.atualizar_item(obra, pk, d)
+
+
+@api(["POST"])
+def orcamento_atualizar_composicao(request, obra, d, pk):
+    S.atualizar_pela_composicao(obra, pk)
+
+
+@api(["POST"])
+def orcamento_importar(request, obra, d):
+    return S.importar_orcamento(obra, d.get("linhas"))
+
+
+# ---- etapas
+@api(["POST"])
+def etapa_criar(request, obra, d):
+    return {"id": S.criar_etapa(obra, d).pk}
+
+
+@api(["POST", "DELETE"])
+def etapa(request, obra, d, pk):
+    if request.method == "DELETE":
+        S.excluir_etapa(obra, pk)
+    else:
+        S.renomear_etapa(obra, pk, d)
+
+
+# ---- cadastro de insumos e composições
+@api(["POST"])
+def insumo_criar(request, obra, d):
+    return {"id": S.salvar_insumo(obra, request.user, d).pk}
+
+
+@api(["POST", "DELETE"])
+def insumo(request, obra, d, pk):
+    if request.method == "DELETE":
+        S.excluir_insumo(obra, request.user, pk)
+    else:
+        S.salvar_insumo(obra, request.user, d, pk)
+
+
+@api(["POST"])
+def composicao_criar(request, obra, d):
+    return {"id": S.salvar_composicao(obra, request.user, d).pk}
+
+
+@api(["POST", "DELETE"])
+def composicao(request, obra, d, pk):
+    if request.method == "DELETE":
+        S.excluir_composicao(obra, request.user, pk)
+    else:
+        S.salvar_composicao(obra, request.user, d, pk)
+
+
+@api(["POST"])
+def composicao_duplicar(request, obra, d, pk):
+    return {"id": S.duplicar_composicao(obra, pk).pk}
+
+
+@api(["POST"])
+def catalogo_importar(request, obra, d):
+    if d.get("tipo") == "composicoes":
+        return S.importar_composicoes(obra, request.user, d.get("escopo"), d.get("linhas"))
+    return S.importar_insumos(obra, request.user, d.get("escopo"), d.get("linhas"))
 
 
 @api(["POST"])

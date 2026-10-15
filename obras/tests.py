@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
 from . import services as S
-from .models import Material, Medicao, Obra, Pagamento
+from .models import Composicao, Etapa, Insumo, ItemOrcamento, Material, Medicao, Obra, Pagamento
 
 
 class Base(TestCase):
@@ -58,7 +58,7 @@ class AcessoTests(Base):
     def test_obra_liberada_aparece_no_login(self):
         e = self.estado()
         self.assertTrue(e["exemplo"])
-        self.assertEqual(len(e["orcamento"]), 8)
+        self.assertEqual(len(e["orcamento"]), 9)
         self.assertEqual(e["usuario"]["nome"], "Ana Lima")
 
     def test_usuario_sem_obra_nao_ganha_obra_automatica(self):
@@ -162,8 +162,8 @@ class RegrasTests(Base):
 class ApiTests(Base):
     def test_fluxo_completo_pela_api(self):
         e = self.estado()
-        porcelanato = next(m for m in e["materiais"] if m["nome"].startswith("Porcelanato"))
-        revest = next(i for i in e["orcamento"] if i["servico"] == "Revestimento cerâmico")
+        porcelanato = next(m for m in e["materiais"] if m["nome"].startswith("Piso porcelanato"))
+        revest = next(i for i in e["orcamento"] if i["servico"].startswith("Piso porcelanato"))
         forn = e["fornecedores"][2]
         r = self.post("/api/notas", {"fornecedorId": forn["id"], "numero": "NF-9001", "data": "2026-10-20", "itens": [{"materialId": porcelanato["id"], "qtd": 300, "valorUnit": 62}]})
         self.assertEqual(r.status_code, 200, r.content)
@@ -351,3 +351,151 @@ class AdminPorObraTests(TestCase):
         self.assertEqual(r.status_code, 200)  # voltou com erro
         self.assertContains(r, "pertence a outra obra")
         self.assertFalse(self.a.contratos.filter(empreiteiro=emp_b).exists())
+
+
+class CatalogoTests(Base):
+    """Insumo (código único) -> composição -> serviço na etapa, com quantidades previstas."""
+
+    def setUp(self):
+        super().setUp()
+        self.obra = self.obra_ana
+        S.recomecar(self.obra, "vazio")
+        self.obra_beto = Obra.objects.create(dono=self.beto)
+        self.cb = Client(); self.cb.force_login(self.beto)
+
+    def test_biblioteca_inicial_carregada(self):
+        comps = Composicao.objects.filter(obra=None)
+        self.assertGreaterEqual(comps.count(), 20)
+        self.assertTrue(all(c.itens.exists() and c.referencia for c in comps))
+        self.assertTrue(Insumo.objects.filter(obra=None, codigo="I-0101").exists())
+
+    def test_servico_por_composicao_congela_preco_e_preve_insumos(self):
+        comp = Composicao.objects.get(obra=None, codigo="C-0009")
+        esperado = sum(i.coeficiente * i.insumo.preco for i in comp.itens.all())
+        item = S.adicionar_item(self.obra, dict(etapa="Alvenaria", composicaoId=comp.pk, qtd=480))
+        self.assertEqual(item.unidade, "m²")
+        self.assertEqual(item.preco_unitario, esperado.quantize(Decimal("0.0001")))
+        self.assertEqual(item.codigo, "C-0009")
+        bloco = item.insumos.get(insumo__codigo="I-0106")
+        self.assertEqual(item.quantidade * bloco.coeficiente, Decimal("6480"))
+        # Mudar o preço do insumo depois NÃO altera o orçado...
+        Insumo.objects.filter(codigo="I-0106", obra=None).update(preco=Decimal("10"))
+        item.refresh_from_db()
+        self.assertEqual(item.preco_unitario, esperado.quantize(Decimal("0.0001")))
+        # ...até pedir para atualizar pela composição
+        S.atualizar_pela_composicao(self.obra, item.pk)
+        item.refresh_from_db()
+        self.assertGreater(item.preco_unitario, esperado)
+
+    def test_servico_por_verba_continua_possivel(self):
+        item = S.adicionar_item(self.obra, dict(etapa="Serviços preliminares", servico="Alvará", unidade="vb", qtd=1, precoUnit=2500))
+        self.assertFalse(item.insumos.exists())
+        self.assertEqual(item.planejado, Decimal("2500"))
+
+    def test_etapas_padrao_e_nova(self):
+        e = self.estado()
+        self.assertIn("Fundação", e["etapasPadrao"])
+        r = self.post("/api/etapas", {"nome": "Paisagismo"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.post("/api/etapas", {"nome": "paisagismo"}).status_code, 400)
+        S.adicionar_item(self.obra, dict(etapa="Fundação", servico="X", unidade="un", qtd=1, precoUnit=1))
+        nomes = [x["nome"] for x in self.estado()["etapas"]]
+        self.assertEqual(nomes, ["Fundação", "Paisagismo"])  # padrão primeiro, na ordem da obra
+        fund = Etapa.objects.get(obra=self.obra, nome="Fundação")
+        self.assertEqual(self.c.delete(f"/api/etapas/{fund.pk}").status_code, 400)  # tem serviço
+
+    def test_usuario_comum_nao_altera_base_mas_cadastra_na_obra(self):
+        r = self.post("/api/insumos", {"escopo": "base", "descricao": "Telha", "unidade": "un"})
+        self.assertEqual(r.status_code, 400)
+        base = Insumo.objects.get(obra=None, codigo="I-0101")
+        self.assertEqual(self.post(f"/api/insumos/{base.pk}", {"descricao": "X", "unidade": "un"}).status_code, 400)
+        r = self.post("/api/insumos", {"descricao": "Telha colonial", "unidade": "un", "tipo": "material", "preco": "2,10"})
+        self.assertEqual(r.status_code, 200, r.content)
+        ins = Insumo.objects.get(pk=r.json()["id"])
+        self.assertEqual((ins.obra_id, ins.codigo, ins.preco), (self.obra.pk, "IP-0001", Decimal("2.1")))
+        self.assertEqual(self.post("/api/insumos", {"codigo": "ip-0001", "descricao": "Outra", "unidade": "un"}).status_code, 400)
+        # Beto não enxerga o insumo da obra da Ana
+        self.assertNotIn(ins.pk, [i["id"] for i in self.estado(self.cb)["insumos"]])
+        self.assertEqual(self.post(f"/api/insumos/{ins.pk}", {"descricao": "Hack", "unidade": "un"}, client=self.cb).status_code, 400)
+
+    def test_grupo_base_geral_libera_editar_base(self):
+        from django.contrib.auth.models import Group
+        self.ana.groups.add(Group.objects.get(name="Base geral de insumos e composições"))
+        r = self.post("/api/insumos", {"escopo": "base", "descricao": "Telha", "unidade": "un"})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIsNone(Insumo.objects.get(pk=r.json()["id"]).obra_id)
+
+    def test_composicao_valida_insumos_e_duplica_para_obra(self):
+        meu = S.salvar_insumo(self.obra, self.ana, {"descricao": "Bloco especial", "unidade": "un"})
+        cimento = Insumo.objects.get(obra=None, codigo="I-0101")
+        r = self.post("/api/composicoes", {"descricao": "Muro", "unidade": "m²", "itens": [{"insumoId": meu.pk, "coef": 12}, {"insumoId": cimento.pk, "coef": "0,1"}]})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(Composicao.objects.get(pk=r.json()["id"]).codigo, "CP-0001")
+        self.assertEqual(self.post("/api/composicoes", {"descricao": "Vazia", "unidade": "m²", "itens": []}).status_code, 400)
+        self.assertEqual(self.post("/api/composicoes", {"descricao": "Rep", "unidade": "m²", "itens": [{"insumoId": cimento.pk, "coef": 1}, {"insumoId": cimento.pk, "coef": 2}]}).status_code, 400)
+        base = Composicao.objects.get(obra=None, codigo="C-0008")
+        r = self.post(f"/api/composicoes/{base.pk}/duplicar")
+        copia = Composicao.objects.get(pk=r.json()["id"])
+        self.assertEqual((copia.obra_id, copia.itens.count()), (self.obra.pk, base.itens.count()))
+        # Base geral não pode usar insumo de uma obra
+        with self.assertRaises(S.RegraNegocio):
+            S._itens_composicao(base, self.obra, [{"insumoId": meu.pk, "coef": 1}])
+        # Insumo em uso não pode ser excluído
+        self.assertEqual(self.c.delete(f"/api/insumos/{meu.pk}").status_code, 400)
+
+    def test_importar_insumos_e_composicoes_tudo_ou_nada(self):
+        linhas = [{"codigo": "M-1", "descricao": "Bloco 1", "unidade": "un", "tipo": "Material", "preco": "3,5"},
+                  {"codigo": "M-2", "descricao": "Ajudante", "unidade": "h", "tipo": "mão de obra", "preco": 19}]
+        r = self.post("/api/catalogo/importar", {"tipo": "insumos", "escopo": "obra", "linhas": linhas})
+        self.assertEqual(r.json()["criados"], 2)
+        r = self.post("/api/catalogo/importar", {"tipo": "insumos", "escopo": "obra", "linhas": linhas[:1] + [{"codigo": "M-3", "descricao": "", "unidade": "un"}]})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Linha 3", r.json()["erro"])
+        self.assertFalse(Insumo.objects.filter(codigo="M-3").exists())
+        comp = [{"codigocomposicao": "S-1", "descricaocomposicao": "Muro", "unidadecomposicao": "m²", "codigoinsumo": "M-1", "coeficiente": 12},
+                {"codigocomposicao": "S-1", "codigoinsumo": "M-2", "coeficiente": "0,8"},
+                {"codigocomposicao": "S-1", "codigoinsumo": "I-0101", "coeficiente": "0,1"}]
+        r = self.post("/api/catalogo/importar", {"tipo": "composicoes", "escopo": "obra", "linhas": comp})
+        self.assertEqual(r.status_code, 200, r.content)
+        c = Composicao.objects.get(obra=self.obra, codigo="S-1")
+        self.assertEqual(c.custo_unitario, Decimal("12") * Decimal("3.5") + Decimal("0.8") * 19 + Decimal("0.1") * 34)
+        r = self.post("/api/catalogo/importar", {"tipo": "composicoes", "escopo": "obra", "linhas": [{"codigocomposicao": "S-2", "descricaocomposicao": "X", "unidadecomposicao": "m", "codigoinsumo": "NAO-EXISTE", "coeficiente": 1}]})
+        self.assertIn("NAO-EXISTE", r.json()["erro"])
+
+    def test_importar_orcamento(self):
+        linhas = [{"etapa": "Alvenaria", "codigocomposicao": "C-0008", "quantidade": 100},
+                  {"etapa": "Serviços preliminares", "servico": "Projeto", "unidade": "vb", "quantidade": 1, "precounitario": 3000}]
+        r = self.post("/api/orcamento/importar", {"linhas": linhas})
+        self.assertEqual(r.status_code, 200, r.content)
+        e = r.json()["estado"]
+        self.assertEqual(len(e["orcamento"]), 2)
+        self.assertEqual([i["etapa"] for i in e["orcamento"]], ["Serviços preliminares", "Alvenaria"])
+        self.assertEqual(len(next(i for i in e["orcamento"] if i["codigo"] == "C-0008")["insumos"]), 6)
+        r = self.post("/api/orcamento/importar", {"linhas": [{"etapa": "Pisos", "codigocomposicao": "C-9999", "quantidade": 1}]})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(ItemOrcamento.objects.filter(obra=self.obra).count(), 2)
+
+    def test_material_do_estoque_ligado_ao_insumo(self):
+        cimento = Insumo.objects.get(obra=None, codigo="I-0101")
+        r = self.post("/api/materiais", {"insumoId": cimento.pk})
+        self.assertEqual(r.status_code, 200)
+        m = next(x for x in r.json()["estado"]["materiais"] if x["id"] == r.json()["id"])
+        self.assertEqual((m["nome"], m["unidade"], m["insumoId"]), (cimento.descricao, "sc", cimento.pk))
+        self.assertEqual(self.post("/api/materiais", {"insumoId": cimento.pk}).status_code, 400)
+
+    def test_editar_quantidade_do_servico(self):
+        comp = Composicao.objects.get(obra=None, codigo="C-0013")
+        item = S.adicionar_item(self.obra, dict(etapa="Pisos", composicaoId=comp.pk, qtd=10))
+        r = self.post(f"/api/orcamento/{item.pk}", {"qtd": 25, "precoUnit": 1})
+        self.assertEqual(r.status_code, 200)
+        item.refresh_from_db()
+        self.assertEqual(item.quantidade, Decimal("25"))
+        self.assertNotEqual(item.preco_unitario, Decimal("1"))  # preço de composição não é digitado
+
+    def test_excluir_obra_com_cadastro_proprio(self):
+        S.carregar_exemplo(self.obra)
+        ins = S.salvar_insumo(self.obra, self.ana, {"descricao": "Só meu", "unidade": "un"})
+        S.salvar_composicao(self.obra, self.ana, {"descricao": "Meu", "unidade": "un", "itens": [{"insumoId": ins.pk, "coef": 1}]})
+        S.excluir_obra(self.obra)
+        self.assertFalse(Insumo.objects.filter(pk=ins.pk).exists())
+        self.assertTrue(Insumo.objects.filter(obra=None).exists())

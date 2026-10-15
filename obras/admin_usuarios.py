@@ -23,7 +23,8 @@ Desmarque para <b>bloquear</b> o acesso sem apagar nada; a obra e os lançamento
 EXPLICA_ADMIN = """
 <div style="max-width:780px;line-height:1.6">
 <p style="margin:0 0 8px">Estas opções valem <b>só para este painel de administração</b> (o endereço /admin).
-Elas não mudam o que a pessoa vê ou faz dentro do app da obra.</p>
+Elas não mudam o que a pessoa vê ou faz dentro do app da obra, com uma exceção: o grupo
+<b>Base geral de insumos e composições</b> (abaixo) também libera editar a base geral na aba Cadastros do app.</p>
 <table style="border-collapse:collapse;margin:0 0 10px">
 <tr><td style="padding:4px 12px 4px 0;vertical-align:top"><b>Membro da equipe</b></td>
 <td style="padding:4px 0">Deixa a pessoa <b>entrar</b> no /admin. Sozinho não mostra nada: ela só vê o que os
@@ -36,7 +37,9 @@ permissões. Já inclui todas as permissões, sem precisar marcar mais nada. Dê
 <br>• <b>Consulta (somente leitura)</b>: vê usuários e os dados de <b>todas</b> as obras no /admin, sem poder alterar nada.
 Bom para quem acompanha os testes.
 <br>• <b>Gestão de usuários e obras</b>: cria e edita usuários (inclusive troca senha), vincula obras a pessoas e vê os dados
-de todas as obras. Não pode tornar ninguém superusuário nem dar acesso ao /admin.</td></tr>
+de todas as obras. Não pode tornar ninguém superusuário nem dar acesso ao /admin.
+<br>• <b>Base geral de insumos e composições</b>: cria, altera e exclui insumos e composições da <b>base geral</b>, que todas
+as obras usam (no /admin e na aba Cadastros do app). Sem esse grupo, a pessoa só cadastra insumos e composições da própria obra.</td></tr>
 <tr><td style="padding:4px 12px 4px 0;vertical-align:top"><b>Permissões do usuário</b></td>
 <td style="padding:4px 0">Ajuste fino, item por item. Cada linha tem o formato <i>tabela · ação</i>:
 <b>ver</b> = ver a lista e os detalhes; <b>adicionar</b> = criar registros; <b>alterar</b> = editar;

@@ -323,7 +323,7 @@
   .nf-draft-table th, .nf-draft-table td{padding:5px 8px;}
 
   /* ---------- Aviso (toast) e confirmação ---------- */
-  #toasts{position:fixed;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));display:grid;gap:8px;z-index:50;width:min(380px, calc(100vw - 32px));}
+  #toasts{position:fixed;right:max(16px, env(safe-area-inset-right, 0px));bottom:calc(16px + env(safe-area-inset-bottom, 0px));display:grid;gap:8px;z-index:110;width:min(380px, calc(100vw - 32px));}
   .toast{background:var(--ink);color:var(--white);border-radius:4px;padding:12px 14px 12px 16px;font-size:13px;line-height:1.5;box-shadow:0 6px 24px rgba(22,35,46,0.25);border-left:4px solid var(--blueprint);display:flex;gap:10px;align-items:flex-start;}
   .toast.ok{border-left-color:#6FB58A;}
   .toast.err{border-left-color:#E07A70;}
@@ -332,7 +332,7 @@
   .toast .t-body b{display:block;margin-bottom:2px;}
   .toast ul{margin:4px 0 0;padding-left:16px;}
   .toast button{background:none;border:none;color:var(--tb-muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;}
-  #modal{position:fixed;inset:0;background:rgba(22,35,46,0.55);display:grid;place-items:center;z-index:60;padding:16px;}
+  #modal{position:fixed;inset:0;background:rgba(22,35,46,0.55);display:grid;place-items:center;z-index:100;padding:16px;}
   #modal[hidden]{display:none;}
   [id^="sec-"], [id^="form-"], #glossario{scroll-margin-top:80px;}
   .flash{animation:flash 1.4s ease;}
@@ -342,6 +342,48 @@
   #modal h4{margin:0 0 8px;font-family:var(--font-display);font-size:18px;font-weight:700;}
   #modal p{margin:0 0 16px;font-size:13.5px;line-height:1.55;color:var(--ink-2);}
   #modal .actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+  /* ---------- Painel de edição (insumo, composição, serviço, etapa) ---------- */
+  #painel{position:fixed;inset:0;background:rgba(20,28,40,0.45);z-index:90;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto;}
+  #painel[hidden]{display:none;}
+  #painel .box{background:var(--white);border-radius:8px;max-width:760px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+  #painel .phead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  #painel .phead h4{margin:0;font-family:var(--font-display);font-size:18px;font-weight:700;flex:1;}
+  #painel .phead button{background:none;border:none;font-size:22px;cursor:pointer;color:var(--concrete);line-height:1;}
+  #painel .pbody{padding:14px 6px 4px;}
+  #painel .pfoot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 20px 18px;border-top:1px solid var(--line);}
+  .comp-rows{padding:0 14px;}
+  .comp-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 28px;gap:8px;align-items:center;margin-bottom:8px;}
+  .comp-row select, .comp-row input{width:100%;padding:7px 8px;border:1px solid var(--line-strong);border-radius:3px;font-family:var(--font-body);font-size:13.5px;background:var(--white);color:var(--ink);}
+  .comp-row .sub{font-family:var(--font-mono);font-size:12px;text-align:right;white-space:nowrap;}
+  .comp-row button{background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;}
+  .comp-head{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 28px;gap:8px;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--concrete);padding:0 14px 4px;}
+  @media(max-width:560px){.comp-row, .comp-head{grid-template-columns:minmax(0,1fr) 80px 28px;}.comp-row .sub, .comp-head .sub{display:none;}}
+  .tag{display:inline-block;font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 7px;border-radius:3px;white-space:nowrap;vertical-align:middle;}
+  .tag.base{background:var(--blueprint-soft);color:var(--blueprint-deep);}
+  .tag.obra{background:var(--accent-soft);color:#9A4F10;}
+  .tag.ref{background:var(--amber-soft);color:#8A5E10;}
+  .tag.verba{background:var(--paper-2);color:var(--concrete);}
+  .busca{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .busca input, .busca select{padding:7px 9px;border:1px solid var(--line-strong);border-radius:3px;font-family:var(--font-body);font-size:13.5px;background:var(--white);color:var(--ink);}
+  .busca input{flex:1;min-width:180px;}
+  .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:4px;overflow:hidden;margin:0 14px 12px;flex-wrap:wrap;}
+  .seg label{padding:7px 12px;font-size:13px;cursor:pointer;display:flex;gap:6px;align-items:center;}
+  .seg label:has(input:checked){background:var(--accent-soft);color:#9A4F10;font-weight:600;}
+  .preview{margin:0 14px 14px;border:1px solid var(--line);border-radius:6px;background:var(--white);padding:10px 12px;font-size:13px;}
+  .preview .tot{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--font-mono);font-size:12px;margin-bottom:6px;}
+  .preview .tot b{font-size:13.5px;color:var(--ink);}
+  .mini{font-size:12px;}
+  .mini td, .mini th{padding:5px 8px;}
+  .codigo{font-family:var(--font-mono);font-size:11.5px;color:var(--concrete);white-space:nowrap;}
+  .acoes{white-space:nowrap;text-align:right;}
+  .acoes button + button{margin-left:10px;}
+  .imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+  .imp-card{border:1px solid var(--line);border-radius:6px;padding:14px;background:var(--paper);}
+  .imp-card h4{margin:0 0 6px;font-size:14px;}
+  .imp-card p{margin:0 0 10px;font-size:12.5px;color:var(--concrete);line-height:1.5;}
+  .imp-card .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .imp-card select{padding:6px 8px;border:1px solid var(--line-strong);border-radius:3px;font-size:12.5px;background:var(--white);}
+  .over{color:var(--red);font-weight:600;}
 </style>
 </head>
 <body>
@@ -357,6 +399,7 @@
 <div class="scrim" id="scrim" hidden></div>
 
 <div id="toasts" aria-live="polite"></div>
+<div id="painel" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="painel-title" id="painel-box"></div></div>
 <div id="modal" hidden><div class="box" role="dialog" aria-modal="true"><h4 id="modal-title"></h4><p id="modal-msg"></p><div class="actions"><button class="ghost" id="modal-no">Cancelar</button><button class="primary" id="modal-yes">Confirmar</button></div></div></div>
 
 <script>
@@ -380,7 +423,11 @@ const GLOSSARIO = {
   orcamento:['Orçamento','Quanto você planejou gastar na obra, serviço por serviço. É a régua contra a qual todo gasto é comparado.'],
   etapa:['Etapa','Uma grande fase da obra: Fundação, Estrutura, Instalações, Acabamento.'],
   servico:['Serviço','Um trabalho dentro da etapa. Ex.: "Alvenaria estrutural" dentro de Estrutura. Cada gasto da obra é ligado a um serviço.'],
-  insumo:['Insumo','O que o serviço consome para ser feito: material, mão de obra ou equipamento.'],
+  insumo:['Insumo','O que o serviço consome para ser feito: material, mão de obra, equipamento ou empreitada. Cada insumo tem um código único e um preço de referência, cadastrados em Cadastros.'],
+  composicao:['Composição de serviço','A "receita" de um serviço: quanto de cada insumo é preciso para fazer 1 unidade dele. Ex.: 1 m² de alvenaria = 13,5 blocos + 0,1 saco de cimento + 0,85 h de pedreiro... O preço do serviço sai da soma dos insumos.'],
+  coeficiente:['Coeficiente','Quanto do insumo vai em 1 unidade do serviço. Se o coeficiente do bloco é 13,5 e o serviço tem 100 m², a obra vai precisar de 1.350 blocos.'],
+  verba:['Serviço por verba','Serviço com valor fechado, sem composição (ex.: taxa de alvará, projeto, empreitada global). Entra no orçamento só com o valor, sem lista de insumos.'],
+  basegeral:['Base geral','Insumos e composições que valem para todas as obras. Só o administrador altera. Cada obra também pode ter os seus próprios, que só ela enxerga.'],
   planejado:['Planejado (orçado)','Quantidade × preço unitário. É o valor que você espera gastar naquele serviço.'],
   realizado:['Realizado','Quanto já foi gasto de verdade naquele serviço: material retirado do estoque + medições aprovadas de empreiteiros + pagamentos avulsos ligados a ele.'],
   fisico:['Avanço físico','Quanto da obra já está pronto, em %. Quem acompanha a obra (engenheiro ou mestre) informa por etapa.'],
@@ -660,6 +707,7 @@ const ICO = {
   collapse:'<path d="M11 6l-6 6 6 6"/><path d="M19 4v16"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   file:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M12 11v6M9 14h6"/>',
+  layers:'<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
 };
 const ic = (n, s) => `<svg width="${s||20}" height="${s||20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[n]}</svg>`;
 const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -674,13 +722,20 @@ const MODULOS = [
   ]},
   {id:'orcamento', label:'Orçamento', icon:'list', items:[
     {label:'Serviços do orçamento', tab:'orcamento', keys:'etapa avanco fisico realizado'},
-    {label:'Adicionar serviço', tab:'orcamento', anchor:'form-orc', keys:'novo item linha orcamento'},
+    {label:'Adicionar serviço', tab:'orcamento', anchor:'form-orc', keys:'novo item linha orcamento composicao verba'},
+    {label:'Importar orçamento', tab:'orcamento', anchor:'form-orc-imp', keys:'planilha excel'},
+    {label:'Etapas da obra', tab:'orcamento', anchor:'sec-etapas', keys:'fase nova etapa renomear'},
+  ]},
+  {id:'cadastros', label:'Cadastros', icon:'layers', items:[
+    {label:'Insumos', tab:'cadastros', anchor:'sec-ins', keys:'material mao de obra equipamento codigo preco'},
+    {label:'Composições de serviço', tab:'cadastros', anchor:'sec-comp', keys:'cpu coeficiente receita servico'},
+    {label:'Importar planilhas', tab:'cadastros', anchor:'sec-imp', keys:'excel insumos composicoes'},
   ]},
   {id:'estoque', label:'Estoque', icon:'box', items:[
     {label:'Saldo de materiais', tab:'estoque', anchor:'sec-saldo', keys:'custo medio'},
     {label:'Lançar nota fiscal', tab:'estoque', anchor:'nf-formbox', keys:'nf entrada compra chegou material'},
     {label:'Notas fiscais lançadas', tab:'estoque', anchor:'sec-nfs', keys:'nf'},
-    {label:'Cadastrar material', tab:'estoque', anchor:'form-mat', keys:'insumo novo'},
+    {label:'Colocar material no estoque', tab:'estoque', anchor:'form-mat', keys:'insumo novo cadastrar material'},
   ]},
   {id:'suprimentos', label:'Suprimentos', icon:'truck', items:[
     {label:'Uso de material', tab:'suprimentos', anchor:'sec-uso', keys:'consumo requisicao'},
@@ -1043,7 +1098,8 @@ function renderGuia(){
       <p class="helptext" style="margin-top:0;">Você não lança "gastei R$ 5 mil". Você lança "usei 180 sacos de cimento nas sapatas" ou "aprovei 40% da alvenaria do empreiteiro". Assim o sistema sabe exatamente onde o dinheiro foi parar e compara com o que foi orçado.</p>
       <div class="card-flex-head" style="margin-bottom:6px;"><h3 style="font-size:14px;">Caminho do material</h3></div>
       ${fluxo([
-        {tab:'orcamento', onde:'Orçamento', titulo:'Planeje', txt:'Cadastre cada serviço com quantidade e preço. Isso vira a meta de gasto.'},
+        {tab:'cadastros', onde:'Cadastros', titulo:'Cadastre', txt:'Insumos com código único e composições de serviço. A base geral já vem com as mais comuns.'},
+        {tab:'orcamento', onde:'Orçamento', titulo:'Planeje', txt:'Escolha a etapa, a composição do serviço e a quantidade. O preço e os insumos previstos saem sozinhos e viram a meta de gasto.'},
         {tab:'estoque', onde:'Estoque', titulo:'Compre', txt:'Chegou material? Lance a nota fiscal. O material entra no estoque e a conta a pagar é criada.'},
         {tab:'suprimentos', onde:'Suprimentos', titulo:'Use', txt:'Retirou material para um serviço? Registre o consumo. Aí ele vira gasto daquele serviço.'},
         {tab:'financeiro', onde:'Financeiro', titulo:'Pague', txt:'Quando o dinheiro sair, marque o pagamento como pago.'},
@@ -1231,77 +1287,432 @@ function renderDashboard(){
 const abertos = new Set();
 function toggleOrigem(id){ abertos.has(id) ? abertos.delete(id) : abertos.add(id); renderAll(); }
 
+/* ---------------------- Cadastro: ajudantes ---------------------- */
+const insumoPor = id => (state.insumos||[]).find(x=>x.id===id);
+const compPor = id => (state.composicoes||[]).find(x=>x.id===id);
+const tipoNome = t => ({'material':'Material','mao-de-obra':'Mão de obra','equipamento':'Equipamento','empreitada':'Empreitada'}[t] || t);
+const tagEscopo = x => x.base ? `<span class="tag base">base geral</span>` : `<span class="tag obra">desta obra</span>`;
+const fmtCoef = v => (v||0).toLocaleString('pt-BR',{maximumFractionDigits:6});
+const podeEditar = x => !x.base || state.podeEditarBase;
+function filtrarLinhas(tbodyId, termo, extra){
+  const ts = norm(termo).split(/\s+/).filter(Boolean);
+  document.querySelectorAll('#'+tbodyId+' tr[data-busca]').forEach(tr=>{
+    const ok = ts.every(t=>tr.dataset.busca.includes(t)) && (!extra || extra(tr));
+    tr.hidden = !ok;
+    const det = tr.nextElementSibling; if(det && det.classList.contains('origem-row')) det.hidden = !ok;
+  });
+}
+/* Quantidade de um insumo já usada (consumo do estoque) num serviço */
+function usadoDoInsumo(itemId, insumoId){
+  const mats = new Set(state.materiais.filter(m=>m.insumoId===insumoId).map(m=>m.id));
+  return state.pedidos.filter(p=>p.orcamentoItemId===itemId && mats.has(p.materialId)).reduce((s,p)=>s+p.qtd,0);
+}
+
+/* ---------------------- Painel de edição ---------------------- */
+let ed = null; /* o que está sendo editado no painel */
+function abrirPainel(titulo, corpo, rodape){
+  document.getElementById('painel-box').innerHTML = `<div class="phead"><h4 id="painel-title">${esc(titulo)}</h4><button onclick="fecharPainel()" aria-label="Fechar">×</button></div>
+    <div class="pbody" id="painel-body">${corpo}</div><div class="pfoot">${rodape}</div>`;
+  const p = document.getElementById('painel'); p.hidden = false;
+  p.onclick = e=>{ if(e.target===p) fecharPainel(); };
+  const f = p.querySelector('input:not([type=hidden]), select'); if(f) f.focus();
+}
+function fecharPainel(){ document.getElementById('painel').hidden = true; ed = null; }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !document.getElementById('painel').hidden) fecharPainel(); });
+
+/* ---- insumo ---- */
+function abrirInsumo(id){
+  const x = id ? insumoPor(id) : {codigo:'', descricao:'', unidade:'', tipo:'material', preco:0, base:false};
+  if(!x) return;
+  const so = id && !podeEditar(x);
+  const dis = so ? 'disabled' : '';
+  abrirPainel(id ? (so ? 'Insumo da base geral' : 'Editar insumo') : 'Novo insumo', `
+    ${so ? `<p class="formhint">Este insumo é da ${t('basegeral','base geral')}: só o administrador altera. Se o preço for diferente na sua obra, cadastre um insumo próprio.</p>` : ''}
+    <div class="formgrid">
+      <div><label for="p-ins-cod">Código</label><input id="p-ins-cod" value="${esc(x.codigo)}" placeholder="automático" ${dis}></div>
+      <div style="grid-column:span 2;"><label for="p-ins-desc">Descrição</label><input id="p-ins-desc" value="${esc(x.descricao)}" placeholder="Ex: Cimento CP-II 50 kg" ${dis}></div>
+      <div><label for="p-ins-un">Unidade</label><input id="p-ins-un" value="${esc(x.unidade)}" placeholder="sc, kg, m², h, un..." ${dis}></div>
+      <div><label for="p-ins-tipo">Tipo</label><select id="p-ins-tipo" ${dis}>${(state.tiposInsumo||[]).map(tp=>`<option value="${tp.id}" ${tp.id===x.tipo?'selected':''}>${esc(tp.nome)}</option>`).join('')}</select></div>
+      <div><label for="p-ins-preco">Preço de referência (R$)</label><input id="p-ins-preco" type="number" step="0.01" min="0" inputmode="decimal" value="${x.preco||''}" ${dis}></div>
+      ${!id && state.podeEditarBase ? `<div><label for="p-ins-esc">Onde vale</label><select id="p-ins-esc"><option value="obra">Só nesta obra</option><option value="base">Base geral (todas as obras)</option></select></div>` : ''}
+    </div>
+    ${!id ? '<p class="formhint">Deixe o código em branco para o sistema numerar sozinho. O código não pode se repetir.</p>' : ''}`,
+    so ? `<button class="ghost" onclick="fecharPainel()">Fechar</button>` : `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarInsumo(${id||0})">Salvar insumo</button>`);
+}
+async function salvarInsumo(id){
+  const d = {codigo:val('p-ins-cod').trim(), descricao:val('p-ins-desc').trim(), unidade:val('p-ins-un').trim(), tipo:val('p-ins-tipo'), preco:val('p-ins-preco')||0, escopo:val('p-ins-esc')||'obra'};
+  if(!d.descricao || !d.unidade){ erro('Informe a descrição e a unidade.'); return; }
+  const r = await api('POST', id ? `/api/insumos/${id}` : '/api/insumos', d);
+  if(r){ fecharPainel(); toast('ok', id ? 'Insumo atualizado' : 'Insumo cadastrado', id ? '<div>Serviços que já estão no orçamento mantêm o preço da data em que entraram. Use "atualizar pela composição" no serviço se quiser o preço novo.</div>' : ''); }
+}
+function excluirInsumo(id){
+  const x = insumoPor(id); if(!x) return;
+  confirmar('Excluir insumo?', `${x.codigo} · ${x.descricao} sai do cadastro. Só é possível se ele não estiver em nenhuma composição, orçamento ou estoque.`, 'Excluir', async ()=>{
+    if(await api('DELETE', `/api/insumos/${id}`)) toast('ok','Insumo excluído','');
+  }, true);
+}
+
+/* ---- composição ---- */
+function opcoesInsumos(sel, soBase){
+  const lista = (state.insumos||[]).filter(i=>!soBase || i.base);
+  return '<option value="">Escolha o insumo…</option>' + (state.tiposInsumo||[]).map(tp=>{
+    const grupo = lista.filter(i=>i.tipo===tp.id);
+    return grupo.length ? `<optgroup label="${esc(tp.nome)}">${grupo.map(i=>`<option value="${i.id}" ${i.id===sel?'selected':''}>${esc(i.codigo+' · '+i.descricao+' ('+i.unidade+')')}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+}
+function abrirComposicao(id){
+  const c = id ? compPor(id) : null;
+  if(id && !c) return;
+  ed = {tipo:'comp', id:id||0, so: !!(c && !podeEditar(c)), base: c ? c.base : false,
+        codigo: c?c.codigo:'', descricao: c?c.descricao:'', unidade: c?c.unidade:'', observacao: c?c.observacao:'',
+        itens: c ? c.itens.map(i=>({insumoId:i.insumoId, coef:i.coef})) : [{insumoId:null, coef:''}]};
+  desenharComposicao();
+}
+function desenharComposicao(){
+  const so = ed.so, dis = so ? 'disabled' : '';
+  const titulo = ed.id ? (so ? 'Composição da base geral' : 'Editar composição') : 'Nova composição de serviço';
+  abrirPainel(titulo, `
+    ${so ? `<p class="formhint">Esta composição é da ${t('basegeral','base geral')}. Para ajustar coeficientes só na sua obra, use <b>Duplicar para esta obra</b>.</p>` : `<p class="formhint">Diga quanto de cada insumo vai em <b>1 unidade</b> do serviço (o ${t('coeficiente','coeficiente')}). O custo do serviço é calculado sozinho com os preços dos insumos.</p>`}
+    <div class="formgrid">
+      <div><label for="p-c-cod">Código</label><input id="p-c-cod" value="${esc(ed.codigo)}" placeholder="automático" oninput="ed.codigo=this.value" ${dis}></div>
+      <div style="grid-column:span 2;"><label for="p-c-desc">Serviço (descrição)</label><input id="p-c-desc" value="${esc(ed.descricao)}" placeholder="Ex: Alvenaria de vedação com bloco cerâmico" oninput="ed.descricao=this.value" ${dis}></div>
+      <div><label for="p-c-un">Unidade do serviço</label><input id="p-c-un" value="${esc(ed.unidade)}" placeholder="m², m³, m, ponto..." oninput="ed.unidade=this.value;atualizarTotalComp()" ${dis}></div>
+      ${!ed.id && state.podeEditarBase ? `<div><label for="p-c-esc">Onde vale</label><select id="p-c-esc" onchange="ed.escopo=this.value;desenharComposicao()"><option value="obra" ${ed.escopo!=='base'?'selected':''}>Só nesta obra</option><option value="base" ${ed.escopo==='base'?'selected':''}>Base geral (todas as obras)</option></select></div>` : ''}
+    </div>
+    <div class="comp-head"><span>Insumo</span><span>Coeficiente</span><span class="sub">Custo</span><span></span></div>
+    <div class="comp-rows">${ed.itens.map((it,idx)=>`<div class="comp-row">
+        <select aria-label="Insumo ${idx+1}" onchange="ed.itens[${idx}].insumoId=parseInt(this.value)||null;atualizarTotalComp()" ${dis}>${opcoesInsumos(it.insumoId, ed.base || ed.escopo==='base')}</select>
+        <input aria-label="Coeficiente ${idx+1}" type="number" step="0.0001" min="0" inputmode="decimal" value="${it.coef}" oninput="ed.itens[${idx}].coef=this.value;atualizarTotalComp()" ${dis}>
+        <span class="sub" id="p-c-sub-${idx}"></span>
+        ${so ? '<span></span>' : `<button type="button" aria-label="Remover linha" onclick="ed.itens.splice(${idx},1);desenharComposicao()">×</button>`}
+      </div>`).join('')}
+      ${so ? '' : `<button class="ghost" type="button" onclick="ed.itens.push({insumoId:null,coef:''});desenharComposicao()">+ insumo</button>
+        <button class="link" type="button" style="margin-left:10px;" onclick="fecharPainel();irPara('cadastros','sec-ins');abrirInsumo()">o insumo não está na lista? cadastrar</button>`}
+    </div>
+    <div class="preview" style="margin-top:14px;"><div class="tot" id="p-c-total"></div></div>
+    <div class="formgrid"><div style="grid-column:1/-1;"><label for="p-c-obs">Observação</label><input id="p-c-obs" value="${esc(ed.observacao)}" oninput="ed.observacao=this.value" ${dis}></div></div>`,
+    so ? `<button class="ghost" onclick="fecharPainel()">Fechar</button><button class="primary" onclick="duplicarComposicao(${ed.id})">Duplicar para esta obra</button>`
+       : `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarComposicao()">Salvar composição</button>`);
+  atualizarTotalComp();
+}
+function atualizarTotalComp(){
+  if(!ed || ed.tipo!=='comp') return;
+  let total = 0;
+  ed.itens.forEach((it,idx)=>{
+    const ins = insumoPor(it.insumoId), sub = ins ? ins.preco*num(it.coef) : 0;
+    total += sub;
+    const el = document.getElementById('p-c-sub-'+idx);
+    if(el) el.textContent = ins ? fmtMoney(sub) : '';
+  });
+  const el = document.getElementById('p-c-total');
+  if(el) el.innerHTML = `<span>Custo de 1 ${esc(ed.unidade||'unidade')}: <b>${fmtMoney(total)}</b></span><span>${ed.itens.filter(i=>i.insumoId).length} insumo(s)</span>`;
+}
+async function salvarComposicao(){
+  const itens = ed.itens.filter(i=>i.insumoId || String(i.coef).trim()).map(i=>({insumoId:i.insumoId, coef:i.coef}));
+  if(!ed.descricao.trim() || !ed.unidade.trim()){ erro('Informe a descrição e a unidade do serviço.'); return; }
+  if(!itens.length){ erro('Adicione pelo menos um insumo.'); return; }
+  if(itens.some(i=>!i.insumoId || !(num(i.coef)>0))){ erro('Cada linha precisa de um insumo e de um coeficiente maior que zero.'); return; }
+  const novo = !ed.id;
+  const r = await api('POST', novo ? '/api/composicoes' : `/api/composicoes/${ed.id}`, {codigo:ed.codigo.trim(), descricao:ed.descricao.trim(), unidade:ed.unidade.trim(), observacao:ed.observacao, escopo:ed.escopo||'obra', itens});
+  if(r){ fecharPainel(); toast('ok', novo ? 'Composição cadastrada' : 'Composição atualizada', novo ? '<div>Ela já aparece para escolher ao adicionar um serviço no Orçamento.</div>' : '<div>Serviços que já estão no orçamento não mudam sozinhos. Use "atualizar pela composição" no serviço.</div>'); }
+}
+async function duplicarComposicao(id){
+  const r = await api('POST', `/api/composicoes/${id}/duplicar`);
+  if(r){ const c = compPor(r.id); toast('ok','Composição copiada para esta obra', `<div>${esc(c?c.codigo:'')}: agora você pode ajustar os coeficientes.</div>`); abrirComposicao(r.id); }
+}
+function excluirComposicao(id){
+  const c = compPor(id); if(!c) return;
+  confirmar('Excluir composição?', `${c.codigo} · ${c.descricao} sai do cadastro. Serviços que já usam essa composição continuam no orçamento com os insumos que tinham.`, 'Excluir', async ()=>{
+    if(await api('DELETE', `/api/composicoes/${id}`)) toast('ok','Composição excluída','');
+  }, true);
+}
+
+/* ---------------------- CADASTROS (aba) ---------------------- */
+const compAbertas = new Set();
+function toggleComp(id){ compAbertas.has(id) ? compAbertas.delete(id) : compAbertas.add(id); renderAll(); }
+function renderCadastros(){
+  const ins = state.insumos||[], comps = state.composicoes||[];
+  const base = state.podeEditarBase;
+  return `
+    <h2 class="section-title">Cadastros</h2>
+    <p class="section-sub">Insumo → Composição de serviço → Serviço na etapa da obra</p>
+    ${intro('cadastros','Como funciona', `<p>1. Cada ${t('insumo','insumo')} tem um <b>código único</b>, unidade e preço de referência.</p>
+      <p>2. A ${t('composicao','composição de serviço')} diz quanto de cada insumo vai em 1 unidade do serviço.</p>
+      <p>3. No Orçamento, você escolhe a etapa, a composição e a quantidade. O sistema calcula o preço e já mostra quanto de cada insumo a obra vai precisar.</p>
+      <p>A ${t('basegeral','base geral')} vale para todas as obras${base ? ' e você pode alterá-la' : ' e só o administrador altera'}. O que você cadastrar aqui fica só nesta obra. A biblioteca inicial tem coeficientes <b>aproximados</b>: confira antes de usar.</p>`)}
+
+    <div class="card" id="sec-ins" style="margin-bottom:18px;">
+      <div class="card-flex-head"><h3>Insumos <span class="codigo">(${ins.length})</span></h3><button class="primary" onclick="abrirInsumo()">+ Novo insumo</button></div>
+      <div class="busca">
+        <input type="search" placeholder="Buscar por código ou descrição" aria-label="Buscar insumo" oninput="filtrarInsumos()" id="b-ins">
+        <select id="b-ins-tipo" onchange="filtrarInsumos()" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option>${(state.tiposInsumo||[]).map(tp=>`<option value="${tp.id}">${esc(tp.nome)}</option>`).join('')}</select>
+        <select id="b-ins-esc" onchange="filtrarInsumos()" aria-label="Filtrar por origem"><option value="">Base geral e desta obra</option><option value="base">Só base geral</option><option value="obra">Só desta obra</option></select>
+      </div>
+      ${ins.length ? tbl(`<table><thead><tr><th>Código</th><th>Descrição</th><th>Unid.</th><th>Tipo</th><th class="num">Preço</th><th>Onde vale</th><th></th></tr></thead><tbody id="tb-ins">
+        ${ins.map(x=>`<tr data-busca="${esc(norm(x.codigo+' '+x.descricao))}" data-tipo="${x.tipo}" data-esc="${x.base?'base':'obra'}">
+          <td class="codigo">${esc(x.codigo)}</td><td>${esc(x.descricao)}</td><td class="mono">${esc(x.unidade)}</td><td>${esc(tipoNome(x.tipo))}</td>
+          <td class="num">${fmtMoney(x.preco)}</td><td>${tagEscopo(x)}</td>
+          <td class="acoes">${podeEditar(x) ? `<button class="link" onclick="abrirInsumo(${x.id})">editar</button>${x.emUso?'':`<button class="link del" onclick="excluirInsumo(${x.id})">excluir</button>`}` : `<button class="link" onclick="abrirInsumo(${x.id})">ver</button>`}</td>
+        </tr>`).join('')}</tbody></table>`) : '<div class="empty">Nenhum insumo cadastrado.</div>'}
+    </div>
+
+    <div class="card" id="sec-comp" style="margin-bottom:18px;">
+      <div class="card-flex-head"><h3>Composições de serviço <span class="codigo">(${comps.length})</span></h3><button class="primary" onclick="abrirComposicao()">+ Nova composição</button></div>
+      <div class="busca"><input type="search" placeholder="Buscar por código ou serviço" aria-label="Buscar composição" oninput="filtrarLinhas('tb-comp', this.value)"></div>
+      ${comps.length ? tbl(`<table><thead><tr><th>Código</th><th>Serviço</th><th>Unid.</th><th class="num">Custo unit.</th><th>Onde vale</th><th></th></tr></thead><tbody id="tb-comp">
+        ${comps.map(c=>{ const aberto = compAbertas.has(c.id); return `<tr data-busca="${esc(norm(c.codigo+' '+c.descricao))}">
+          <td class="codigo">${esc(c.codigo)}</td>
+          <td>${esc(c.descricao)} ${c.referencia?'<span class="tag ref" title="Coeficientes aproximados: confira antes de usar">referência</span>':''}<br><button class="link" onclick="toggleComp(${c.id})">${aberto?'esconder insumos':'ver insumos ('+c.itens.length+')'}</button></td>
+          <td class="mono">${esc(c.unidade)}</td><td class="num">${fmtMoney(c.custo)}</td><td>${tagEscopo(c)}</td>
+          <td class="acoes">${podeEditar(c) ? `<button class="link" onclick="abrirComposicao(${c.id})">editar</button>` : `<button class="link" onclick="abrirComposicao(${c.id})">ver</button>`}<button class="link" onclick="duplicarComposicao(${c.id})">duplicar${c.base?' p/ esta obra':''}</button>${podeEditar(c)?`<button class="link del" onclick="excluirComposicao(${c.id})">excluir</button>`:''}</td>
+        </tr>${aberto ? `<tr class="origem-row"><td colspan="6">${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th class="num">Coeficiente</th><th class="num">Preço</th><th class="num">Custo</th></tr></thead><tbody>
+          ${c.itens.map(i=>{ const x = insumoPor(i.insumoId); return `<tr><td><span class="codigo">${x?esc(x.codigo):''}</span> ${x?esc(x.descricao):'—'}</td><td class="num">${fmtCoef(i.coef)} ${x?esc(x.unidade):''}/${esc(c.unidade)}</td><td class="num">${x?fmtMoney(x.preco):'—'}</td><td class="num">${x?fmtMoney(x.preco*i.coef):'—'}</td></tr>`; }).join('')}
+          </tbody></table>`)}${c.observacao?`<p class="helptext" style="margin:6px 0 0;">${esc(c.observacao)}</p>`:''}</td></tr>` : ''}`; }).join('')}</tbody></table>`) : '<div class="empty">Nenhuma composição cadastrada.</div>'}
+    </div>
+
+    <div class="card" id="sec-imp">
+      <h3>Importar planilhas</h3>
+      <p class="helptext">Baixe o modelo, preencha no Excel e importe. Se o código já existir, o cadastro é atualizado; se não, é criado. Se alguma linha tiver erro, nada é gravado e o sistema diz qual linha corrigir.</p>
+      <div class="imp-grid">
+        <div class="imp-card"><h4>Insumos</h4><p>Colunas: Codigo, Descricao, Unidade, Tipo (material, mão de obra, equipamento ou empreitada), Preco.</p>
+          <div class="row">${base ? `<select id="imp-ins-esc" aria-label="Importar insumos para"><option value="obra">Para esta obra</option><option value="base">Para a base geral</option></select>` : ''}
+            <button class="ghost" onclick="baixarModeloInsumos()">Baixar modelo</button>
+            <label class="ghost">Importar planilha<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="importarCatalogo(event,'insumos')"></label></div></div>
+        <div class="imp-card"><h4>Composições de serviço</h4><p>Uma linha por insumo: CodigoComposicao, DescricaoComposicao, UnidadeComposicao, CodigoInsumo, Coeficiente. Importe os insumos antes.</p>
+          <div class="row">${base ? `<select id="imp-comp-esc" aria-label="Importar composições para"><option value="obra">Para esta obra</option><option value="base">Para a base geral</option></select>` : ''}
+            <button class="ghost" onclick="baixarModeloComposicoes()">Baixar modelo</button>
+            <label class="ghost">Importar planilha<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="importarCatalogo(event,'composicoes')"></label></div></div>
+        <div class="imp-card"><h4>Exportar o cadastro</h4><p>Baixa todos os insumos e composições que esta obra enxerga, já no formato de importação.</p>
+          <div class="row"><button class="ghost" onclick="exportarCatalogo()">Exportar insumos e composições</button></div></div>
+      </div>
+    </div>`;
+}
+function filtrarInsumos(){
+  const tp = val('b-ins-tipo'), es = val('b-ins-esc');
+  filtrarLinhas('tb-ins', val('b-ins'), tr=>(!tp || tr.dataset.tipo===tp) && (!es || tr.dataset.esc===es));
+}
+
+/* ---- planilhas do cadastro ---- */
+function lerPlanilha(evt, aba, cb){
+  const file = evt.target.files[0]; evt.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    let linhas;
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const nome = wb.SheetNames.find(n=>normKey(n)===normKey(aba)) || wb.SheetNames[0];
+      linhas = XLSX.utils.sheet_to_json(wb.Sheets[nome], {defval:'', raw:true}).map(linhaNormalizada);
+    }catch(err){ toast('err','Não foi possível ler essa planilha','<div>Use o modelo baixado aqui (formato .xlsx).</div>'); return; }
+    if(!linhas.length){ toast('err','Planilha vazia','<div>A primeira linha deve ter os nomes das colunas, como no modelo.</div>'); return; }
+    cb(linhas);
+  };
+  reader.readAsArrayBuffer(file);
+}
+function importarCatalogo(evt, tipo){
+  const escopo = val(tipo==='insumos' ? 'imp-ins-esc' : 'imp-comp-esc') || 'obra';
+  lerPlanilha(evt, tipo==='insumos' ? 'Insumos' : 'Composicoes', async linhas=>{
+    const r = await api('POST', '/api/catalogo/importar', {tipo, escopo, linhas});
+    if(!r) return;
+    const onde = escopo==='base' ? 'na base geral' : 'nesta obra';
+    toast('ok', 'Planilha importada', tipo==='insumos' ? `<div>${r.criados} insumo(s) criado(s) e ${r.atualizados} atualizado(s) ${onde}.</div>` : `<div>${r.criadas} composição(ões) criada(s) e ${r.atualizadas} atualizada(s) ${onde}.</div>`);
+  });
+}
+function baixarModeloInsumos(){
+  const ws = XLSX.utils.aoa_to_sheet([['Codigo','Descricao','Unidade','Tipo','Preco'], ['M-001','Telha cerâmica colonial','un','material',2.1], ['M-002','Telhadista','h','mão de obra',30]]);
+  ws['!cols'] = [{wch:12},{wch:36},{wch:10},{wch:16},{wch:10}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Insumos');
+  salvarArquivo(wb, 'modelo-insumos-prumo.xlsx');
+}
+function baixarModeloComposicoes(){
+  const ws = XLSX.utils.aoa_to_sheet([['CodigoComposicao','DescricaoComposicao','UnidadeComposicao','CodigoInsumo','Coeficiente'],
+    ['S-001','Telhado com telha colonial','m²','M-001',16.5], ['S-001','','','M-002',0.9], ['S-001','','','I-0002',0.6]]);
+  ws['!cols'] = [{wch:16},{wch:34},{wch:18},{wch:14},{wch:12}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Composicoes');
+  salvarArquivo(wb, 'modelo-composicoes-prumo.xlsx');
+}
+function exportarCatalogo(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((state.insumos||[]).map(x=>({Codigo:x.codigo, Descricao:x.descricao, Unidade:x.unidade, Tipo:tipoNome(x.tipo), Preco:x.preco, OndeVale:x.base?'Base geral':'Esta obra'}))), 'Insumos');
+  const linhas = [];
+  (state.composicoes||[]).forEach(c=>c.itens.forEach((i,k)=>{ const x = insumoPor(i.insumoId);
+    linhas.push({CodigoComposicao:c.codigo, DescricaoComposicao:k?'':c.descricao, UnidadeComposicao:k?'':c.unidade, CodigoInsumo:x?x.codigo:'', Coeficiente:i.coef, OndeVale:k?'':(c.base?'Base geral':'Esta obra')}); }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), 'Composicoes');
+  salvarArquivo(wb, 'cadastro-insumos-composicoes-' + todayStr() + '.xlsx');
+}
+
+/* ---------------------- ORÇAMENTO ---------------------- */
+const orcDraft = {etapa:'', modo:'comp', compId:null, filtro:''};
+function opcoesEtapa(){
+  const usadas = new Set(state.etapas.map(e=>norm(e.nome)));
+  const padrao = (state.etapasPadrao||[]).filter(n=>!usadas.has(norm(n)));
+  const sel = orcDraft.etapa;
+  return `<option value="">Escolha a etapa…</option>
+    ${state.etapas.length ? `<optgroup label="Etapas desta obra">${state.etapas.map(e=>`<option value="id:${e.id}" ${sel==='id:'+e.id?'selected':''}>${esc(e.nome)}</option>`).join('')}</optgroup>` : ''}
+    ${padrao.length ? `<optgroup label="Etapas padrão">${padrao.map(n=>`<option value="nome:${esc(n)}" ${sel==='nome:'+n?'selected':''}>${esc(n)}</option>`).join('')}</optgroup>` : ''}`;
+}
+function opcoesComposicao(){
+  const f = norm(orcDraft.filtro).split(/\s+/).filter(Boolean);
+  const ok = c => f.every(t=>norm(c.codigo+' '+c.descricao).includes(t));
+  const obra = (state.composicoes||[]).filter(c=>!c.base && ok(c)), base = (state.composicoes||[]).filter(c=>c.base && ok(c));
+  const op = c => `<option value="${c.id}" ${orcDraft.compId===c.id?'selected':''}>${esc(c.codigo+' · '+c.descricao+' — '+fmtMoney(c.custo)+'/'+c.unidade)}</option>`;
+  if(!obra.length && !base.length) return '<option value="">Nenhuma composição encontrada</option>';
+  return '<option value="">Escolha a composição…</option>' + (obra.length ? `<optgroup label="Desta obra">${obra.map(op).join('')}</optgroup>` : '') + (base.length ? `<optgroup label="Base geral">${base.map(op).join('')}</optgroup>` : '');
+}
+function atualizarPreviewOrc(){
+  const el = document.getElementById('orc-preview'); if(!el) return;
+  const c = compPor(orcDraft.compId), q = parseFloat(val('f-orc-qtd'))||0;
+  if(!c){ el.innerHTML = '<span class="codigo">Escolha uma composição para ver o preço e os insumos previstos.</span>'; return; }
+  el.innerHTML = `<div class="tot"><span>Unidade: <b>${esc(c.unidade)}</b></span><span>Custo unitário: <b>${fmtMoney(c.custo)}</b></span><span>Planejado: <b>${fmtMoney(c.custo*q)}</b></span></div>
+    ${tbl(`<table class="mini"><thead><tr><th>Insumo previsto</th><th class="num">Coef.</th><th class="num">Quantidade${q?'':' (informe a qtd.)'}</th><th class="num">Custo</th></tr></thead><tbody>
+    ${c.itens.map(i=>{ const x = insumoPor(i.insumoId); return `<tr><td><span class="codigo">${x?esc(x.codigo):''}</span> ${x?esc(x.descricao):'—'}</td><td class="num">${fmtCoef(i.coef)}</td><td class="num">${q?fmtNum(i.coef*q)+' '+(x?esc(x.unidade):''):'—'}</td><td class="num">${x&&q?fmtMoney(x.preco*i.coef*q):'—'}</td></tr>`; }).join('')}
+    </tbody></table>`)}${c.referencia?'<p class="helptext" style="margin:8px 0 0;">Composição de referência: coeficientes aproximados. Confira antes de fechar o orçamento.</p>':''}`;
+}
+function setModoOrc(m){
+  orcDraft.modo = m;
+  document.getElementById('orc-modo-comp').hidden = m!=='comp';
+  document.getElementById('orc-modo-verba').hidden = m!=='verba';
+}
+function filtrarComposicoesOrc(v){
+  orcDraft.filtro = v;
+  const s = document.getElementById('f-orc-comp'); s.innerHTML = opcoesComposicao();
+  if(!compPor(parseInt(s.value))) orcDraft.compId = null;
+  atualizarPreviewOrc();
+}
+
+const insAbertos = new Set();
+function toggleInsumos(id){ insAbertos.has(id) ? insAbertos.delete(id) : insAbertos.add(id); renderAll(); }
+
 function renderOrcamento(){
-  const etapas = [...new Set(state.orcamento.map(i=>i.etapa))];
+  const etapas = state.etapas.filter(e=>state.orcamento.some(i=>i.etapaId===e.id));
+  const totalObra = state.orcamento.reduce((s,i)=>s+planejadoDoItem(i),0);
   return `
     <h2 class="section-title">Orçamento da Obra</h2>
-    <p class="section-sub">Etapa → Serviço → Insumo</p>
-    ${intro('orcamento','Para que serve esta tela', `<p>Aqui você diz quanto pretende gastar. Cada linha é um ${t('servico','serviço')} da obra, dentro de uma ${t('etapa','etapa')}, com quantidade e preço unitário. O sistema multiplica e chega no valor ${t('planejado','planejado')}.</p><p>A coluna ${t('realizado','Realizado')} mostra quanto já foi gasto naquele serviço. Toque em "ver origem" para saber de onde veio cada real. No canto de cada etapa, informe o ${t('fisico','avanço físico')}: quanto daquela etapa já está pronto.</p>`,
-      'o realizado se atualiza quando você registra consumo de material, aprova uma medição ou lança um pagamento avulso ligado ao serviço.')}
+    <p class="section-sub">Etapa → Serviço (composição) → Insumos previstos · total ${fmtMoney(totalObra)}</p>
+    ${intro('orcamento','Para que serve esta tela', `<p>Aqui você diz quanto pretende gastar. Cada linha é um ${t('servico','serviço')} dentro de uma ${t('etapa','etapa')}. Escolha uma ${t('composicao','composição')} e informe a quantidade: o preço e a quantidade de cada ${t('insumo','insumo')} saem sozinhos. Para valores fechados (taxas, projetos, empreitada global), use ${t('verba','por verba')}.</p><p>A coluna ${t('realizado','Realizado')} mostra quanto já foi gasto. Em "insumos" você compara o previsto com o que já saiu do estoque para aquele serviço. No canto de cada etapa, informe o ${t('fisico','avanço físico')}.</p>`,
+      'o preço do serviço fica congelado na data em que ele entrou no orçamento. Mudou o preço de um insumo? Use "atualizar pela composição" no serviço.')}
 
     ${etapas.length ? etapas.map(et=>{
-      const itens = state.orcamento.filter(i=>i.etapa===et);
-      const safe = esc(et);
+      const itens = state.orcamento.filter(i=>i.etapaId===et.id);
+      const totEt = itens.reduce((s,i)=>s+planejadoDoItem(i),0);
       return `
         <div class="card" style="margin-bottom:16px;">
           <div class="card-flex-head">
-            <h3>${safe}</h3>
+            <h3>${esc(et.nome)} <span class="codigo">${fmtMoney(totEt)}</span></h3>
             <label class="link-tag">${t('fisico','pronto')}:
-              <input type="number" min="0" max="100" value="${state.etapaAvanco[et]||0}" data-etapa-avanco="${safe}" aria-label="Avanço físico de ${safe} em %"
+              <input type="number" min="0" max="100" value="${et.percentual||0}" data-etapa-avanco="${esc(et.nome)}" aria-label="Avanço físico de ${esc(et.nome)} em %"
                 style="width:48px;border:none;background:transparent;font-family:var(--font-mono);color:var(--blueprint);font-weight:600;font-size:12px;">%
             </label>
           </div>
           ${tbl(`<table>
-            <thead><tr><th>Serviço</th><th>Insumo</th><th>Unid.</th><th class="num">Qtd.</th><th class="num">Preço unit.</th><th class="num">Planejado</th><th style="min-width:200px;">Realizado</th><th></th></tr></thead>
+            <thead><tr><th>Código</th><th>Serviço</th><th>Unid.</th><th class="num">Qtd.</th><th class="num">Preço unit.</th><th class="num">Planejado</th><th style="min-width:190px;">Realizado</th><th></th></tr></thead>
             <tbody>
               ${itens.map(i=>{
                 const plan = planejadoDoItem(i);
                 const orig = origensDoItem(i.id);
                 const real = orig.reduce((s,o)=>s+o.valor,0);
-                const aberto = abertos.has(i.id);
+                const aberto = abertos.has(i.id), insAb = insAbertos.has(i.id);
                 return `<tr>
-                  <td>${esc(i.servico)}</td>
-                  <td style="font-size:12px;color:var(--concrete);">${esc(i.insumo)||'—'}</td>
+                  <td class="codigo">${i.codigo ? esc(i.codigo) : `<span class="tag verba">verba</span>`}</td>
+                  <td>${esc(i.servico)}${i.observacao?`<div class="codigo" style="white-space:normal;">${esc(i.observacao)}</div>`:''}
+                    ${i.insumos.length ? `<br><button class="link" onclick="toggleInsumos(${i.id})">${insAb?'esconder insumos':'insumos ('+i.insumos.length+')'}</button>` : ''}</td>
                   <td class="mono">${esc(i.unidade)}</td>
                   <td class="num">${fmtNum(i.qtd)}</td>
                   <td class="num">${fmtMoney(i.precoUnit)}</td>
                   <td class="num">${fmtMoney(plan)}</td>
                   <td>${rulerBar(plan, real, '', fmtMoney(real))}
                     ${orig.length ? `<button class="link" onclick="toggleOrigem(${i.id})">${aberto?'esconder origem':'ver origem ('+orig.length+')'}</button>` : '<span class="mono" style="font-size:11px;color:var(--concrete);">nada lançado ainda</span>'}</td>
-                  <td>${itemTemVinculo(i.id) ? '' : `<button class="link del" onclick="excluirItem(${i.id})">excluir</button>`}</td>
+                  <td class="acoes"><button class="link" onclick="abrirItem(${i.id})">editar</button>${itemTemVinculo(i.id) ? '' : `<button class="link del" onclick="excluirItem(${i.id})">excluir</button>`}</td>
                 </tr>
+                ${insAb ? `<tr class="origem-row"><td colspan="8">${tbl(`<table class="mini"><thead><tr><th>Insumo</th><th class="num">Coef.</th><th class="num">Previsto</th><th class="num">Já usado</th><th class="num">Preço (orçado)</th><th class="num">Custo previsto</th></tr></thead><tbody>
+                  ${i.insumos.map(p=>{ const x = insumoPor(p.insumoId), prev = p.coef*i.qtd, usado = usadoDoInsumo(i.id, p.insumoId);
+                    return `<tr><td><span class="codigo">${x?esc(x.codigo):''}</span> ${x?esc(x.descricao):'insumo excluído'}</td><td class="num">${fmtCoef(p.coef)}</td>
+                      <td class="num">${fmtNum(prev)} ${x?esc(x.unidade):''}</td><td class="num ${usado>prev?'over':''}">${x && x.tipo==='material' ? fmtNum(usado)+(usado>prev?' ▲':'') : '—'}</td>
+                      <td class="num">${fmtMoney(p.preco)}</td><td class="num">${fmtMoney(p.preco*prev)}</td></tr>`; }).join('')}
+                  </tbody></table>`)}<p class="helptext" style="margin:6px 0 0;">"Já usado" soma o material que saiu do estoque para este serviço (Suprimentos → Registrar uso). Mão de obra é acompanhada pelas medições.</p></td></tr>` : ''}
                 ${aberto && orig.length ? `<tr class="origem-row"><td colspan="8"><div class="origem-list">${orig.map(o=>`<div><span class="mono">${fmtDate(o.data)}</span><span>${o.tipo}: ${o.desc}</span><b>${fmtMoney(o.valor)}</b></div>`).join('')}</div></td></tr>` : ''}`;
               }).join('')}
             </tbody>
           </table>`)}
         </div>`;
-    }).join('') : '<div class="empty">Nenhum serviço no orçamento ainda. Use o formulário abaixo ou importe uma planilha em Dados da obra e planilhas.</div>'}
+    }).join('') : '<div class="empty">Nenhum serviço no orçamento ainda. Use o formulário abaixo ou importe uma planilha.</div>'}
 
     <details class="formbox" id="form-orc" ${state.orcamento.length?'':'open'}>
       <summary>Adicionar serviço ao orçamento</summary>
-      <p class="formhint">Exemplo: etapa "Cobertura", serviço "Telhado", insumo "Madeira e telha cerâmica", 180 m² a R$ 95,50.</p>
-      <div class="formgrid">
-        <div><label for="f-orc-etapa">Etapa</label><input id="f-orc-etapa" placeholder="Ex: Cobertura" list="etapas-list">
-          <datalist id="etapas-list">${etapas.map(e=>`<option value="${esc(e)}">`).join('')}</datalist>
-        </div>
-        <div><label for="f-orc-servico">Serviço</label><input id="f-orc-servico" placeholder="Ex: Telhado"></div>
-        <div><label for="f-orc-insumo">Insumo (opcional)</label><input id="f-orc-insumo" placeholder="Ex: Madeira e telha"></div>
-        <div><label for="f-orc-unidade">Unidade</label><input id="f-orc-unidade" placeholder="m², m³, un, ponto..."></div>
-        <div><label for="f-orc-qtd">Quantidade</label><input id="f-orc-qtd" type="number" step="0.01" inputmode="decimal"></div>
-        <div><label for="f-orc-preco">Preço unitário (R$)</label><input id="f-orc-preco" type="number" step="0.01" inputmode="decimal"></div>
+      <p class="formhint">1. Escolha a etapa. 2. Escolha a composição do serviço (ou "por verba"). 3. Informe a quantidade.</p>
+      <div class="formgrid" style="align-items:end;">
+        <div><label for="f-orc-etapa">Etapa</label><select id="f-orc-etapa" onchange="orcDraft.etapa=this.value">${opcoesEtapa()}</select></div>
+        <div><button class="ghost" style="padding:9px 12px;" onclick="abrirNovaEtapa()">+ Nova etapa</button></div>
       </div>
+      <div class="seg" role="radiogroup" aria-label="Como orçar o serviço">
+        <label><input type="radio" name="orc-modo" value="comp" ${orcDraft.modo==='comp'?'checked':''} onchange="setModoOrc('comp')"> Pela composição (recomendado)</label>
+        <label><input type="radio" name="orc-modo" value="verba" ${orcDraft.modo==='verba'?'checked':''} onchange="setModoOrc('verba')"> Por verba (valor fechado)</label>
+      </div>
+      <div id="orc-modo-comp" ${orcDraft.modo==='comp'?'':'hidden'}>
+        <div class="formgrid">
+          <div><label for="f-orc-busca">Buscar composição</label><input id="f-orc-busca" type="search" placeholder="Ex: alvenaria, C-0009" value="${esc(orcDraft.filtro)}" oninput="filtrarComposicoesOrc(this.value)"></div>
+          <div style="grid-column:span 2;"><label for="f-orc-comp">Composição do serviço</label><select id="f-orc-comp" onchange="orcDraft.compId=parseInt(this.value)||null;atualizarPreviewOrc()">${opcoesComposicao()}</select></div>
+          <div><label for="f-orc-qtd">Quantidade</label><input id="f-orc-qtd" type="number" step="0.01" min="0" inputmode="decimal" oninput="atualizarPreviewOrc()"></div>
+          <div style="grid-column:span 2;"><label for="f-orc-nome">Nome do serviço (opcional)</label><input id="f-orc-nome" placeholder="Igual ao da composição"></div>
+        </div>
+        <div class="preview" id="orc-preview"></div>
+        <p class="formhint">Não achou a composição? <button class="link" onclick="irPara('cadastros','sec-comp')">Cadastre em Cadastros</button>.</p>
+      </div>
+      <div id="orc-modo-verba" ${orcDraft.modo==='verba'?'':'hidden'}>
+        <div class="formgrid">
+          <div style="grid-column:span 2;"><label for="f-orc-servico">Serviço</label><input id="f-orc-servico" placeholder="Ex: Taxa de alvará, Projeto elétrico"></div>
+          <div><label for="f-orc-unidade">Unidade</label><input id="f-orc-unidade" placeholder="vb, un, m²..." value="vb"></div>
+          <div><label for="f-orc-vqtd">Quantidade</label><input id="f-orc-vqtd" type="number" step="0.01" min="0" inputmode="decimal" value="1"></div>
+          <div><label for="f-orc-preco">Preço unitário (R$)</label><input id="f-orc-preco" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div class="formgrid"><div style="grid-column:1/-1;"><label for="f-orc-obs">Observação (opcional)</label><input id="f-orc-obs" placeholder="Ex: pavimento térreo"></div></div>
       <div class="form-actions"><button class="primary" onclick="handleAddOrcamento()">Adicionar ao orçamento</button></div>
+    </details>
+
+    <details class="formbox" id="form-orc-imp">
+      <summary>Importar serviços de uma planilha</summary>
+      <p class="formhint">Os serviços da planilha são <b>acrescentados</b> ao orçamento. Colunas: Etapa, CodigoComposicao, Servico, Unidade, Quantidade, PrecoUnitario, Observacao. Com código de composição, o preço vem da composição (Servico, Unidade e PrecoUnitario podem ficar em branco). Sem código, a linha vira serviço por verba. Etapa que ainda não existe é criada.</p>
+      <div class="form-actions"><button class="ghost" onclick="baixarModeloOrcamento()">Baixar modelo</button>
+        <label class="ghost">Importar planilha<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="importarOrcamento(event)"></label></div>
+    </details>
+
+    <details class="formbox" id="sec-etapas">
+      <summary>Etapas da obra (${state.etapas.length})</summary>
+      <p class="formhint">As etapas organizam o orçamento. Escolha da lista padrão ao adicionar um serviço, ou crie uma etapa nova aqui. Só dá para excluir etapa sem serviços.</p>
+      <div style="padding:0 14px 14px;">${state.etapas.length ? tbl(`<table class="mini"><tbody>${state.etapas.map(e=>{ const n = state.orcamento.filter(i=>i.etapaId===e.id).length;
+        return `<tr><td>${esc(e.nome)}</td><td class="codigo">${n} serviço(s)</td><td class="acoes"><button class="link" onclick="abrirRenomearEtapa(${e.id})">renomear</button>${n?'':`<button class="link del" onclick="excluirEtapa(${e.id})">excluir</button>`}</td></tr>`; }).join('')}</tbody></table>`) : '<div class="empty">Nenhuma etapa ainda.</div>'}
+        <button class="ghost" style="margin-top:10px;" onclick="abrirNovaEtapa()">+ Nova etapa</button></div>
     </details>
   `;
 }
 
 async function handleAddOrcamento(){
-  const etapa = val('f-orc-etapa').trim(), servico = val('f-orc-servico').trim(), insumo = val('f-orc-insumo').trim(), unidade = val('f-orc-unidade').trim();
-  const qtd = parseFloat(val('f-orc-qtd')), precoUnit = parseFloat(val('f-orc-preco'));
-  if(!etapa || !servico || !unidade){ erro('Preencha etapa, serviço e unidade.'); return; }
-  if(!(qtd>0) || !(precoUnit>0)){ erro('Quantidade e preço unitário precisam ser maiores que zero.'); return; }
-  const r = await api('POST', '/api/orcamento', {etapa, servico, insumo, unidade, qtd, precoUnit});
-  if(r) toast('ok', 'Serviço adicionado', `<div>${esc(servico)}: planejado ${fmtMoney(qtd*precoUnit)}. O total orçado da obra foi atualizado.</div>`);
+  const sel = val('f-orc-etapa');
+  if(!sel){ erro('Escolha a etapa.'); return; }
+  const etapa = sel.startsWith('id:') ? {etapaId: parseInt(sel.slice(3))} : {etapa: sel.slice(5)};
+  const observacao = val('f-orc-obs').trim();
+  let corpo, resumo;
+  if(orcDraft.modo==='comp'){
+    const c = compPor(parseInt(val('f-orc-comp'))), qtd = parseFloat(val('f-orc-qtd'));
+    if(!c){ erro('Escolha a composição do serviço.'); return; }
+    if(!(qtd>0)){ erro('A quantidade precisa ser maior que zero.'); return; }
+    corpo = {...etapa, composicaoId:c.id, qtd, servico: val('f-orc-nome').trim() || undefined, observacao};
+    resumo = `${esc(c.descricao)}: ${fmtNum(qtd)} ${esc(c.unidade)} · planejado ${fmtMoney(qtd*c.custo)}. Os insumos previstos já estão no serviço.`;
+  } else {
+    const servico = val('f-orc-servico').trim(), unidade = val('f-orc-unidade').trim(), qtd = parseFloat(val('f-orc-vqtd')), precoUnit = parseFloat(val('f-orc-preco'));
+    if(!servico || !unidade){ erro('Preencha o serviço e a unidade.'); return; }
+    if(!(qtd>0) || !(precoUnit>0)){ erro('Quantidade e preço unitário precisam ser maiores que zero.'); return; }
+    corpo = {...etapa, servico, unidade, qtd, precoUnit, observacao};
+    resumo = `${esc(servico)}: planejado ${fmtMoney(qtd*precoUnit)} (por verba).`;
+  }
+  const r = await api('POST', '/api/orcamento', corpo);
+  if(!r) return;
+  const it = state.orcamento.find(i=>i.id===r.id);
+  if(it) orcDraft.etapa = 'id:'+it.etapaId;
+  orcDraft.compId = null; orcDraft.filtro = '';
+  renderAll(); const fb = document.getElementById('form-orc'); if(fb) fb.open = true;
+  toast('ok', 'Serviço adicionado', `<div>${resumo}</div>`);
 }
 
 function excluirItem(id){
@@ -1309,6 +1720,70 @@ function excluirItem(id){
   confirmar('Excluir serviço?', `"${i.servico}" sai do orçamento. Ele não tem nenhum gasto ligado, então nada mais muda.`, 'Excluir', async ()=>{
     if(await api('DELETE', `/api/orcamento/${id}`)) toast('ok','Serviço excluído','');
   }, true);
+}
+
+function abrirItem(id){
+  const i = state.orcamento.find(x=>x.id===id); if(!i) return;
+  const verba = !i.insumos.length, c = compPor(i.composicaoId);
+  abrirPainel('Editar serviço do orçamento', `
+    <div class="formgrid">
+      <div><label for="p-it-etapa">Etapa</label><select id="p-it-etapa">${state.etapas.map(e=>`<option value="${e.id}" ${e.id===i.etapaId?'selected':''}>${esc(e.nome)}</option>`).join('')}</select></div>
+      <div style="grid-column:span 2;"><label for="p-it-serv">Serviço</label><input id="p-it-serv" value="${esc(i.servico)}"></div>
+      <div><label for="p-it-qtd">Quantidade (${esc(i.unidade)})</label><input id="p-it-qtd" type="number" step="0.01" min="0" inputmode="decimal" value="${i.qtd}"></div>
+      ${verba ? `<div><label for="p-it-un">Unidade</label><input id="p-it-un" value="${esc(i.unidade)}"></div>
+        <div><label for="p-it-preco">Preço unitário (R$)</label><input id="p-it-preco" type="number" step="0.01" min="0" inputmode="decimal" value="${i.precoUnit}"></div>` : ''}
+      <div style="grid-column:1/-1;"><label for="p-it-obs">Observação</label><input id="p-it-obs" value="${esc(i.observacao||'')}"></div>
+    </div>
+    ${verba ? '<p class="formhint">Serviço por verba: o preço é digitado.</p>' : `<p class="formhint">Preço vindo da composição <b>${esc(i.codigo)}</b>, congelado em ${fmtMoney(i.precoUnit)}/${esc(i.unidade)}.
+      ${c ? `Com os preços de hoje, a composição custa ${fmtMoney(c.custo)}/${esc(c.unidade)}.` : 'A composição original foi excluída; o serviço mantém os insumos que tinha.'}</p>`}`,
+    `${!verba && c ? `<button class="ghost" onclick="atualizarPelaComposicao(${i.id})">Atualizar pela composição</button>` : ''}<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarItem(${i.id}, ${verba})">Salvar</button>`);
+}
+async function salvarItem(id, verba){
+  const d = {etapaId: parseInt(val('p-it-etapa')), servico: val('p-it-serv').trim(), qtd: val('p-it-qtd'), observacao: val('p-it-obs').trim()};
+  if(verba){ d.unidade = val('p-it-un').trim(); d.precoUnit = val('p-it-preco'); }
+  if(await api('POST', `/api/orcamento/${id}`, d)){ fecharPainel(); toast('ok','Serviço atualizado',''); }
+}
+function atualizarPelaComposicao(id){
+  const i = state.orcamento.find(x=>x.id===id), c = i && compPor(i.composicaoId); if(!c) return;
+  confirmar('Atualizar pela composição?', `O preço passa de ${fmtMoney(i.precoUnit)} para ${fmtMoney(c.custo)} por ${c.unidade}, e os insumos previstos passam a ser os da composição ${c.codigo} de hoje. O orçado da obra muda.`, 'Atualizar', async ()=>{
+    if(await api('POST', `/api/orcamento/${id}/atualizar-composicao`)){ fecharPainel(); toast('ok','Serviço atualizado pela composição',''); }
+  });
+}
+
+/* ---- etapas ---- */
+function abrirNovaEtapa(){
+  abrirPainel('Nova etapa', `<div class="formgrid"><div style="grid-column:1/-1;"><label for="p-et-nome">Nome da etapa</label><input id="p-et-nome" placeholder="Ex: Muro e paisagismo" onkeydown="if(event.key==='Enter')salvarNovaEtapa()"></div></div>
+    <p class="formhint">Antes de criar, confira se ela já não está na lista padrão: ${(state.etapasPadrao||[]).map(esc).join(', ')}.</p>`,
+    `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarNovaEtapa()">Criar etapa</button>`);
+}
+async function salvarNovaEtapa(){
+  const nome = val('p-et-nome').trim(); if(!nome){ erro('Informe o nome da etapa.'); return; }
+  const r = await api('POST', '/api/etapas', {nome});
+  if(r){ orcDraft.etapa = 'id:'+r.id; fecharPainel(); renderAll(); toast('ok','Etapa criada', `<div>${esc(nome)} já está selecionada para o próximo serviço.</div>`); }
+}
+function abrirRenomearEtapa(id){
+  const e = state.etapas.find(x=>x.id===id); if(!e) return;
+  abrirPainel('Renomear etapa', `<div class="formgrid"><div style="grid-column:1/-1;"><label for="p-et-nome">Nome da etapa</label><input id="p-et-nome" value="${esc(e.nome)}"></div></div>`,
+    `<button class="ghost" onclick="fecharPainel()">Cancelar</button><button class="primary" onclick="salvarRenomearEtapa(${id})">Salvar</button>`);
+}
+async function salvarRenomearEtapa(id){
+  const nome = val('p-et-nome').trim(); if(!nome){ erro('Informe o nome da etapa.'); return; }
+  if(await api('POST', `/api/etapas/${id}`, {nome})){ fecharPainel(); toast('ok','Etapa renomeada',''); }
+}
+function excluirEtapa(id){
+  const e = state.etapas.find(x=>x.id===id); if(!e) return;
+  confirmar('Excluir etapa?', `"${e.nome}" sai da obra.`, 'Excluir', async ()=>{ if(await api('DELETE', `/api/etapas/${id}`)) toast('ok','Etapa excluída',''); }, true);
+}
+
+/* ---- importar orçamento ---- */
+function importarOrcamento(evt){
+  lerPlanilha(evt, 'Orcamento', linhas=>{
+    const validas = linhas.filter(l=>Object.values(l).some(v=>String(v).trim()));
+    confirmar('Importar serviços?', `${validas.length} linha(s) serão acrescentadas ao orçamento atual. Nada do que já existe é apagado.`, 'Importar', async ()=>{
+      const r = await api('POST', '/api/orcamento/importar', {linhas: validas});
+      if(r) toast('ok','Orçamento importado', `<div>${r.servicos} serviço(s) acrescentado(s).</div>`);
+    });
+  });
 }
 
 /* ---------------------- SUPRIMENTOS ---------------------- */
@@ -1337,11 +1812,12 @@ function renderSuprimentos(){
           ${!state.orcamento.length ? `<p class="formhint">Primeiro cadastre pelo menos um serviço no Orçamento. <button class="link" onclick="irPara('orcamento')">Ir para Orçamento</button></p>`
             : !comSaldo.length ? `<p class="formhint">Nenhum material tem saldo no estoque. Lance uma nota fiscal de entrada primeiro. <button class="link" onclick="irPara('estoque')">Ir para Estoque</button></p>`
             : `<div class="formgrid">
-            <div><label for="f-cons-item">Em qual serviço foi usado</label><select id="f-cons-item">${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select></div>
-            <div><label for="f-cons-mat">Material</label><select id="f-cons-mat">${comSaldo.map(m=>`<option value="${m.id}">${esc(m.nome)} (tem ${fmtNum(m.saldo)} ${esc(m.unidade)})</option>`).join('')}</select></div>
-            <div><label for="f-cons-qtd">Quantidade usada</label><input id="f-cons-qtd" type="number" step="0.01" inputmode="decimal"></div>
+            <div><label for="f-cons-item">Em qual serviço foi usado</label><select id="f-cons-item" onchange="atualizarDicaConsumo()">${state.orcamento.map(i=>`<option value="${i.id}">${esc(i.etapa+' · '+i.servico)}</option>`).join('')}</select></div>
+            <div><label for="f-cons-mat">Material</label><select id="f-cons-mat" onchange="atualizarDicaConsumo()">${comSaldo.map(m=>`<option value="${m.id}">${esc(m.nome)} (tem ${fmtNum(m.saldo)} ${esc(m.unidade)})</option>`).join('')}</select></div>
+            <div><label for="f-cons-qtd">Quantidade usada</label><input id="f-cons-qtd" type="number" step="0.01" inputmode="decimal" oninput="atualizarDicaConsumo()"></div>
             <div><label for="f-cons-data">Data</label><input id="f-cons-data" type="date" value="${todayStr()}"></div>
           </div>
+          <p class="formhint" id="dica-consumo"></p>
           <div class="form-actions"><button class="primary" onclick="handleConsumo()">Registrar uso</button></div>`}
         </details>
       </div>
@@ -1362,6 +1838,19 @@ function renderSuprimentos(){
       </div>
     </div>
   `;
+}
+
+/* Mostra o previsto pela composição para o material escolhido naquele serviço */
+function atualizarDicaConsumo(){
+  const el = document.getElementById('dica-consumo'); if(!el) return;
+  const item = state.orcamento.find(i=>i.id===parseInt(val('f-cons-item')));
+  const mat = state.materiais.find(m=>m.id===parseInt(val('f-cons-mat')));
+  if(!item || !mat){ el.innerHTML = ''; return; }
+  const prev = mat.insumoId ? item.insumos.find(p=>p.insumoId===mat.insumoId) : null;
+  if(!prev){ el.innerHTML = item.insumos.length ? `Esse material não está previsto na composição de "${esc(item.servico)}". Confira se o serviço está certo.` : ''; return; }
+  const previsto = prev.coef*item.qtd, usado = usadoDoInsumo(item.id, mat.insumoId), agora = parseFloat(val('f-cons-qtd'))||0;
+  const total = usado + agora;
+  el.innerHTML = `Previsto para este serviço: <b>${fmtNum(previsto)} ${esc(mat.unidade)}</b> · já usado: ${fmtNum(usado)}${agora?` · com este lançamento: <b class="${total>previsto?'over':''}">${fmtNum(total)}</b>${total>previsto?' (acima do previsto)':''}`:''}`;
 }
 
 function handleConsumo(){
@@ -1408,21 +1897,22 @@ function renderEstoque(){
 
     <div class="card" style="margin-bottom:18px;" id="sec-saldo">
       <h3>Saldo atual por material</h3>
-      ${state.materiais.length ? tbl(`<table><thead><tr><th>Material</th><th>Unid.</th><th class="num">Saldo</th><th class="num">Custo médio</th><th class="num">Valor parado</th></tr></thead><tbody>
+      ${state.materiais.length ? tbl(`<table><thead><tr><th>Código</th><th>Material</th><th>Unid.</th><th class="num">Saldo</th><th class="num">Custo médio</th><th class="num">Valor parado</th></tr></thead><tbody>
         ${state.materiais.map(m=>`<tr>
-          <td>${esc(m.nome)}</td><td class="mono">${esc(m.unidade)}</td>
+          <td class="codigo">${(insumoPor(m.insumoId)||{}).codigo ? esc(insumoPor(m.insumoId).codigo) : '—'}</td><td>${esc(m.nome)}</td><td class="mono">${esc(m.unidade)}</td>
           <td class="num">${m.saldo>0 ? fmtNum(m.saldo) : pill('sem saldo','neutral')}</td>
           <td class="num">${m.custoMedio ? fmtMoney(m.custoMedio) : '—'}</td>
           <td class="num">${fmtMoney(m.saldo*m.custoMedio)}</td>
         </tr>`).join('')}
-      </tbody></table>`) : '<div class="empty">Nenhum material cadastrado. Cadastre abaixo antes de lançar notas.</div>'}
+      </tbody></table>`) : '<div class="empty">Nenhum material no estoque ainda. Coloque um material abaixo antes de lançar notas.</div>'}
       <details class="formbox" id="form-mat" ${state.materiais.length?'':'open'}>
-        <summary>Cadastrar novo material</summary>
-        <div class="formgrid">
-          <div><label for="f-mat-nome">Nome</label><input id="f-mat-nome" placeholder="Ex: Tinta acrílica 18L"></div>
-          <div><label for="f-mat-unid">Unidade</label><input id="f-mat-unid" placeholder="un, sc, kg, m², lata..."></div>
-        </div>
-        <div class="form-actions"><button class="primary" onclick="handleAddMaterial()">Cadastrar material</button></div>
+        <summary>Colocar material no estoque</summary>
+        ${(()=>{ const jaTem = new Set(state.materiais.map(m=>m.insumoId).filter(Boolean));
+          const lista = (state.insumos||[]).filter(i=>i.tipo==='material' && !jaTem.has(i.id));
+          return lista.length ? `<p class="formhint">Escolha o insumo do cadastro. Ele entra com saldo zero; o saldo sobe quando você lança a nota fiscal.</p>
+          <div class="formgrid"><div style="grid-column:span 2;"><label for="f-mat-ins">Insumo (material)</label><select id="f-mat-ins">${lista.map(i=>`<option value="${i.id}">${esc(i.codigo+' · '+i.descricao+' ('+i.unidade+')')}</option>`).join('')}</select></div></div>
+          <div class="form-actions"><button class="primary" onclick="handleAddMaterial()">Colocar no estoque</button><button class="link" onclick="irPara('cadastros','sec-ins');abrirInsumo()">o material não está na lista? cadastrar insumo</button></div>`
+          : `<p class="formhint">Todos os materiais do cadastro já estão no estoque. <button class="link" onclick="irPara('cadastros','sec-ins');abrirInsumo()">Cadastrar novo insumo</button></p>`; })()}
       </details>
     </div>
 
@@ -1469,9 +1959,9 @@ function renderEstoque(){
 }
 
 async function handleAddMaterial(){
-  const nome = val('f-mat-nome').trim(), unidade = val('f-mat-unid').trim();
-  if(!nome || !unidade){ erro('Informe o nome e a unidade do material.'); return; }
-  if(await api('POST', '/api/materiais', {nome, unidade})) toast('ok','Material cadastrado', `<div>${esc(nome)} começa com saldo zero. Lance uma nota fiscal para dar entrada.</div>`);
+  const ins = insumoPor(parseInt(val('f-mat-ins')));
+  if(!ins){ erro('Escolha o insumo.'); return; }
+  if(await api('POST', '/api/materiais', {insumoId: ins.id})) toast('ok','Material no estoque', `<div>${esc(ins.descricao)} começa com saldo zero. Lance uma nota fiscal para dar entrada.</div>`);
 }
 
 function handleAddItemNFDraft(){
@@ -1722,9 +2212,12 @@ async function salvarArquivo(wb, nome){
 }
 
 function baixarModeloOrcamento(){
-  const headers = ['Etapa','Servico','Insumo','Unidade','Quantidade','PrecoUnitario'];
-  const ws = XLSX.utils.aoa_to_sheet([headers, ['Cobertura','Estrutura de telhado','Madeira e telha cerâmica','m²',180,95.5], ['Cobertura','Calhas e rufos','Chapa galvanizada','m',42,68]]);
-  ws['!cols'] = [{wch:14},{wch:28},{wch:28},{wch:10},{wch:12},{wch:14}];
+  const headers = ['Etapa','CodigoComposicao','Servico','Unidade','Quantidade','PrecoUnitario','Observacao'];
+  const ws = XLSX.utils.aoa_to_sheet([headers,
+    ['Alvenaria','C-0008','','',350,'','Paredes internas'],
+    ['Cobertura','C-0017','','',180,'',''],
+    ['Serviços preliminares','','Taxa de alvará','vb',1,2500,'Sem composição: por verba']]);
+  ws['!cols'] = [{wch:22},{wch:18},{wch:24},{wch:9},{wch:11},{wch:13},{wch:26}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Orcamento');
   salvarArquivo(wb, 'modelo-orcamento-prumo.xlsx');
@@ -1734,10 +2227,10 @@ function exportarDadosCompletos(){
   const wb = XLSX.utils.book_new();
   const add = (rows, nome, headers) => XLSX.utils.book_append_sheet(wb, rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([headers]), nome);
   add([{Nome:state.obra.nome, Cliente:state.obra.cliente, Prazo:state.obra.prazo, ValorContratado:state.obra.valorContratado}], 'Obra');
-  add(state.orcamento.map(i=>({ID:i.id, Etapa:i.etapa, Servico:i.servico, Insumo:i.insumo||'', Unidade:i.unidade, Quantidade:i.qtd, PrecoUnitario:i.precoUnit})), 'Orcamento', ['ID','Etapa','Servico','Insumo','Unidade','Quantidade','PrecoUnitario']);
+  add(state.orcamento.map(i=>({ID:i.id, Etapa:i.etapa, CodigoComposicao:i.codigo||'', Servico:i.servico, Unidade:i.unidade, Quantidade:i.qtd, PrecoUnitario:i.precoUnit, Observacao:i.observacao||''})), 'Orcamento', ['ID','Etapa','CodigoComposicao','Servico','Unidade','Quantidade','PrecoUnitario','Observacao']);
   add(Object.entries(state.etapaAvanco).map(([Etapa,AvancoFisicoPct])=>({Etapa, AvancoFisicoPct})), 'EtapaAvanco', ['Etapa','AvancoFisicoPct']);
   add(state.fornecedores.map(f=>({ID:f.id, Nome:f.nome, Contato:f.contato})), 'Fornecedores', ['ID','Nome','Contato']);
-  add(state.materiais.map(m=>({ID:m.id, Nome:m.nome, Unidade:m.unidade, Saldo:m.saldo, CustoMedio:m.custoMedio})), 'Materiais', ['ID','Nome','Unidade','Saldo','CustoMedio']);
+  add(state.materiais.map(m=>{ const x = insumoPor(m.insumoId); return {ID:m.id, CodigoInsumo:x?x.codigo:'', Nome:m.nome, Unidade:m.unidade, Saldo:m.saldo, CustoMedio:m.custoMedio}; }), 'Materiais', ['ID','CodigoInsumo','Nome','Unidade','Saldo','CustoMedio']);
   const nfRows = []; state.notasFiscais.forEach(nf=>nf.itens.forEach(it=>nfRows.push({ID:nf.id, Numero:nf.numero, FornecedorID:nf.fornecedorId, Data:nf.data, MaterialID:it.materialId, Quantidade:it.qtd, ValorUnitario:it.valorUnit})));
   add(nfRows, 'NotasFiscais', ['ID','Numero','FornecedorID','Data','MaterialID','Quantidade','ValorUnitario']);
   add(state.pedidos.map(p=>({ID:p.id, OrcamentoItemID:p.orcamentoItemId, MaterialID:p.materialId, Quantidade:p.qtd, QuantidadeSolicitada:p.qtdSolicitada, Valor:p.valor, Data:p.data})), 'ConsumoMaterial', ['ID','OrcamentoItemID','MaterialID','Quantidade','QuantidadeSolicitada','Valor','Data']);
@@ -1785,16 +2278,17 @@ function handleImportarPlanilha(evt){
       const orc = sheet('Orcamento');
       if(orc){
         novo.orcamento = orc.map(r=>({
-          id: idOr(r.id, uid), etapa:String(pick(r,'etapa')).trim(), servico:String(pick(r,'servico')).trim(), insumo:String(pick(r,'insumo')).trim(),
+          id: idOr(r.id, uid), etapa:String(pick(r,'etapa')).trim(), servico:String(pick(r,'servico')).trim(), observacao:String(pick(r,'observacao','insumo')).trim(), codigo:String(pick(r,'codigocomposicao','codigo')).trim(),
           unidade:String(pick(r,'unidade','unid')).trim(), qtd:num(pick(r,'quantidade','qtd')), precoUnit:num(pick(r,'precounitario','precounit','preco','valorunitario'))
-        })).filter(i=>i.etapa && i.servico);
+        })).map(i=>{ if(!i.servico && i.codigo){ const c = (state.composicoes||[]).find(x=>norm(x.codigo)===norm(i.codigo)); if(c) i.servico = c.descricao; } return i; })
+          .filter(i=>i.etapa && i.servico);
       }
       const et = sheet('EtapaAvanco');
       if(et){ novo.etapaAvanco = {}; et.forEach(r=>{ if(r.etapa) novo.etapaAvanco[String(r.etapa)] = num(r.avancofisicopct); }); }
       [...new Set(novo.orcamento.map(i=>i.etapa))].forEach(x=>{ if(!(x in novo.etapaAvanco)) novo.etapaAvanco[x]=0; });
 
       const forn = sheet('Fornecedores'); if(forn) novo.fornecedores = forn.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), contato:String(r.contato||'')})).filter(f=>f.nome);
-      const mat = sheet('Materiais'); if(mat) novo.materiais = mat.map(r=>({id:idOr(r.id,uid), nome:String(r.nome||''), unidade:String(r.unidade||''), saldo:num(r.saldo), custoMedio:num(r.customedio)})).filter(m=>m.nome);
+      const mat = sheet('Materiais'); if(mat) novo.materiais = mat.map(r=>({id:idOr(r.id,uid), codigoInsumo:String(r.codigoinsumo||''), nome:String(r.nome||''), unidade:String(r.unidade||''), saldo:num(r.saldo), custoMedio:num(r.customedio)})).filter(m=>m.nome);
       const nfs = sheet('NotasFiscais');
       if(nfs){
         const g = {};
@@ -1842,7 +2336,7 @@ function handleImportarPlanilha(evt){
 /* ---------------------- Render principal ---------------------- */
 function renderAll(){
   renderMenu(); updateTopbar(); renderStatus();
-  const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, suprimentos:renderSuprimentos, estoque:renderEstoque, contratos:renderContratos, financeiro:renderFinanceiro};
+  const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, cadastros:renderCadastros, suprimentos:renderSuprimentos, estoque:renderEstoque, contratos:renderContratos, financeiro:renderFinanceiro};
   if(!map[currentTab]) currentTab = 'inicio';
   if(state.semObra){
     const su = state.usuario && state.usuario.superusuario;
@@ -1874,6 +2368,8 @@ function renderAll(){
     });
   });
   document.querySelectorAll('details.intro').forEach(d=> d.addEventListener('toggle', ()=> setPref('intro-'+d.dataset.intro, d.open)));
+  if(currentTab==='orcamento') atualizarPreviewOrc();
+  if(currentTab==='suprimentos') atualizarDicaConsumo();
   salvar();
 }
 

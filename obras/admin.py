@@ -4,8 +4,8 @@ from django.db.models import Count, Sum
 
 from . import services as S
 from .models import (
-    Consumo, Contrato, Empreiteiro, Fornecedor, ItemNota, ItemOrcamento, Material,
-    Medicao, NotaFiscal, Obra, Pagamento,
+    Composicao, Consumo, Contrato, Empreiteiro, Etapa, Fornecedor, Insumo, InsumoPrevisto, ItemComposicao,
+    ItemNota, ItemOrcamento, Material, Medicao, NotaFiscal, Obra, Pagamento,
 )
 
 
@@ -117,18 +117,111 @@ class ObraAdmin(admin.ModelAdmin):
         self.message_user(request, f"{qs.count()} obra(s) zeradas.", messages.SUCCESS)
 
 
+# ---------------------------------------------------------------- cadastro de insumos e composições
+class EscopoFiltro(admin.SimpleListFilter):
+    title = "onde vale"
+    parameter_name = "escopo"
+
+    def lookups(self, request, model_admin):
+        return [("base", "Base geral (todas as obras)"), ("obra", "Só de uma obra")]
+
+    def queryset(self, request, qs):
+        if self.value() == "base":
+            return qs.filter(obra__isnull=True)
+        if self.value() == "obra":
+            return qs.filter(obra__isnull=False)
+        return qs
+
+
+class CatalogoAdmin(admin.ModelAdmin):
+    list_select_related = ("obra",)
+
+    @admin.display(description="Onde vale", ordering="obra__nome")
+    def escopo(self, o):
+        return "Base geral" if o.obra_id is None else f"Só a obra {o.obra.nome}"
+
+
+@admin.register(Insumo)
+class InsumoAdmin(CatalogoAdmin):
+    list_display = ("codigo", "descricao", "unidade", "tipo", "preco", "escopo", "atualizado_em")
+    list_filter = (EscopoFiltro, "tipo", "obra")
+    search_fields = ("codigo", "descricao")
+    fields = ("obra", "codigo", "descricao", "unidade", "tipo", "preco")
+
+
+class ItemComposicaoFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        comp = self.instance
+        vistos = set()
+        for f in self.forms:
+            if not getattr(f, "cleaned_data", None) or f.cleaned_data.get("DELETE"):
+                continue
+            ins = f.cleaned_data.get("insumo")
+            if not ins:
+                continue
+            if ins.obra_id is not None and ins.obra_id != comp.obra_id:
+                f.add_error("insumo", "Esse insumo é de outra obra. Uma composição da base geral só pode usar insumos da base geral; "
+                                      "uma composição de uma obra, os da base geral ou os daquela obra.")
+            if ins.pk in vistos:
+                f.add_error("insumo", "Insumo repetido na composição.")
+            vistos.add(ins.pk)
+
+
+class ItemComposicaoInline(admin.TabularInline):
+    model = ItemComposicao
+    formset = ItemComposicaoFormSet
+    extra = 1
+    autocomplete_fields = ("insumo",)
+
+
+@admin.register(Composicao)
+class ComposicaoAdmin(CatalogoAdmin):
+    list_display = ("codigo", "descricao", "unidade", "custo", "escopo", "referencia")
+    list_filter = (EscopoFiltro, "referencia", "obra")
+    search_fields = ("codigo", "descricao")
+    fields = ("obra", "codigo", "descricao", "unidade", "observacao", "referencia")
+    inlines = [ItemComposicaoInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("itens__insumo")
+
+    @admin.display(description="Custo por unidade (R$)")
+    def custo(self, o):
+        return f"{o.custo_unitario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+@admin.register(Etapa)
+class EtapaAdmin(PorObra):
+    list_display = ("nome", "ordem", "percentual", "obra_col")
+    search_fields = ("nome", "obra__nome")
+
+
+class InsumoPrevistoInline(admin.TabularInline):
+    model = InsumoPrevisto
+    extra = 0
+    can_delete = False
+    readonly_fields = ("insumo", "coeficiente", "preco_unitario")
+    verbose_name_plural = "insumos previstos (cópia da composição na data em que o serviço entrou no orçamento)"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(ItemOrcamento)
 class ItemOrcamentoAdmin(PorObra):
-    list_display = ("servico", "etapa", "unidade", "quantidade", "preco_unitario", "obra_col")
-    list_filter = ("obra", "etapa")
-    search_fields = ("servico", "etapa", "obra__nome")
+    list_display = ("servico", "codigo", "etapa", "unidade", "quantidade", "preco_unitario", "obra_col")
+    search_fields = ("servico", "codigo", "etapa__nome", "obra__nome")
+    readonly_fields = ("composicao", "codigo")
+    inlines = [InsumoPrevistoInline]
 
 
 @admin.register(Material)
 class MaterialAdmin(PorObra):
-    list_display = ("nome", "unidade", "saldo", "custo_medio", "obra_col")
-    search_fields = ("nome", "obra__nome")
+    list_display = ("nome", "insumo", "unidade", "saldo", "custo_medio", "obra_col")
+    search_fields = ("nome", "obra__nome", "insumo__codigo")
     readonly_fields = ("saldo", "custo_medio")
+    autocomplete_fields = ("insumo",)
 
 
 @admin.register(Fornecedor)

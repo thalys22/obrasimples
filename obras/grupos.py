@@ -8,6 +8,9 @@ GRUPOS = {
         | Q(content_type__app_label="obras", codename="change_obra")
         | Q(content_type__app_label="auth", content_type__model="user", codename__in=["view_user", "add_user", "change_user"])
     ),
+    # Quem pode alterar a base geral de insumos e composições (no admin e na aba Cadastros do app)
+    "Base geral de insumos e composições": lambda P: P.filter(
+        content_type__app_label="obras", content_type__model__in=["insumo", "composicao", "itemcomposicao"]),
 }
 
 

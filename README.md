@@ -54,6 +54,24 @@ O próprio usuário troca a senha dele pelo avatar → *Trocar senha*. Não há 
 
 ---
 
+## 2.1. Orçamento: insumos, composições e etapas
+
+O orçamento é montado em cadeia, e cada elo é um cadastro com código único:
+
+1. **Insumo** (aba *Cadastros*): material, mão de obra, equipamento ou empreitada, com código, unidade e preço de referência.
+2. **Composição de serviço**: quanto de cada insumo vai em 1 unidade do serviço (coeficiente). O custo sai da soma dos insumos.
+3. **Serviço na etapa** (aba *Orçamento*): escolha a etapa, a composição e a quantidade. O sistema calcula o preço e a quantidade prevista de cada insumo.
+
+Regras:
+
+- **Base geral × obra.** Insumos e composições sem obra formam a *base geral* (todas as obras usam). Só o superusuário ou quem estiver no grupo **Base geral de insumos e composições** altera a base geral. Os demais cadastram itens só da obra deles, ou duplicam uma composição da base para a obra e ajustam.
+- **Biblioteca inicial.** O sistema já vem com 38 insumos e 21 composições comuns (migração `0004`). Os coeficientes e preços são **aproximados**: confira e ajuste antes de usar em orçamento real.
+- **Preço congelado.** Ao entrar no orçamento, o serviço guarda uma cópia dos insumos e preços daquele dia. Mudar o preço de um insumo depois não altera o orçado, a não ser que você use *atualizar pela composição* no serviço.
+- **Por verba.** Serviços sem composição (taxa, projeto, empreitada global) entram só com o valor.
+- **Etapas.** Escolhidas da lista padrão ou criadas pelo botão *Nova etapa*. Não há etapa em texto livre, o que evita duplicatas como "Terraplanagem" e "Terraplenagem".
+- **Estoque ligado ao insumo.** O material do estoque é um insumo do cadastro. Assim, em cada serviço dá para comparar a quantidade prevista com a quantidade que já saiu do estoque.
+- **Importação.** Insumos e composições se atualizam pelo código (tudo ou nada: se uma linha tiver erro, nada é gravado). A importação de orçamento acrescenta serviços sem apagar os que já existem.
+
 ## 3. Colocar no ar na Vercel (recomendado)
 
 O site atualiza sozinho a cada envio ao GitHub. O banco é PostgreSQL (Neon), porque na Vercel arquivos gravados não ficam guardados e o SQLite perderia os dados.
@@ -151,7 +169,8 @@ Funciona em qualquer hospedagem Python (Render, Railway, uma VPS). Comando de in
 
 ```
 config/            configurações do Django
-obras/models.py    tabelas: obra, orçamento, materiais, notas, consumos, contratos, medições, pagamentos
+obras/models.py    tabelas: obra, etapas, insumos, composições, orçamento, materiais, notas, consumos, contratos, medições, pagamentos
+obras/biblioteca.py  insumos e composições da biblioteca inicial (valores aproximados)
 obras/services.py  regras de negócio (tudo que altera dados passa por aqui)
 obras/views.py     API JSON usada pelo app (/api/...)
 obras/admin.py     painel de administração
