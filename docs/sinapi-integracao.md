@@ -1,6 +1,6 @@
 # Prumo · Integração com o SINAPI (design para a próxima sessão)
 
-Status: **desenho revisado com o arquivo real `SINAPI_Referência_2026_09.xlsx` (mês de referência 09/2026, emitido em 09/10/2026). Nada implementado no produto.** Escrito em 14/10/2026, depois do commit `5c4c141` (orçamento amarrado por insumo → composição → serviço na etapa). A Fase 0 (verificações) está concluída quanto ao arquivo; ficam pendentes os itens da seção 12.
+Status: **desenho revisado com o arquivo real `SINAPI_Referência_2026_09.xlsx` (mês de referência 09/2026, emitido em 09/10/2026). Fase 1 implementada em 15/10/2026 (ver seção 16); Fase 2 pendente.** Escrito em 14/10/2026, depois do commit `5c4c141` (orçamento amarrado por insumo → composição → serviço na etapa). A Fase 0 (verificações) está concluída quanto ao arquivo; ficam pendentes os itens da seção 12.
 
 > Cópia do documento mantido no Project "App - Controle de obra" (claude.ai). Se houver divergência, confira o Project.
 
@@ -279,3 +279,23 @@ GitHub Actions agendado para detectar e carregar o mês novo; alerta quando o la
 - Teste de interface: Playwright com Chromium já instalado em `/opt/pw-browsers`; a biblioteca `xlsx` do navegador vem de CDN que o ambiente pode bloquear, então servir uma cópia local na rota do teste.
 - Deploy: `git push origin main` dispara a Vercel; conferir o status pela API de status de commit do GitHub (o ambiente não alcança `vercel.app`).
 - O arquivo SINAPI usado na análise foi anexado à conversa; não está no repositório. Para reanalisar, pedir o arquivo de novo ou baixar da Caixa.
+
+## 16. Fase 1 implementada (15/10/2026)
+
+Código: `sinapi/` (`models.py`, `leitor.py`, `carga.py`, `servico.py`, `mapas.py`, comando `carregar_sinapi`), migração `sinapi/0001`, `requirements-etl.txt`.
+
+**Medido com o arquivo real (SE e BA, regimes sd e cd, mês 09/2026):**
+- Conferência de custo: SE/sd 8.372 dentro da tolerância, 71 até 5%, 0 acima; BA/sd 8.394 / 49 / 0 (idêntico ao desenho). cd: SE 8.361/81/1, BA 8.385/56/2 (aceitos com aviso; limite de bloqueio 1%).
+- Tempo 34 a 41 s; pico de memória 214 MB; segunda execução com o mesmo arquivo: 1,4 s ("nada a fazer").
+- Tamanho: banco inteiro 31 MB no PostgreSQL 16 (maiores tabelas: itens 7,1 MB, custos 6,1 MB, composições 4,9 MB, preços 2,9 MB). Estimativa antiga de 20 a 30 MB confirmada para o escopo inicial.
+- Contagens: 10.599 composições (1.720 não orçáveis: 906+438+376), 6.124 insumos (1.246 sem classificação por só existirem no Analítico), 56.568 itens; SE/sd com 1.779 de 4.878 preços vindos de SP.
+- Busca "alvenaria" em SE: 461 resultados em 28 ms; `obter_composicao` em 56 ms (PostgreSQL local).
+
+**Desvios do desenho:**
+1. Sem `pg_trgm`/`unaccent`: a busca usa o campo `Composicao.busca` (texto normalizado) com `contains` por palavra. Com 10,6 mil composições é rápido e funciona igual em SQLite e PostgreSQL, sem depender de extensão do Neon. Reavaliar se o catálogo crescer muito.
+2. `Carga` é única por (`referencia`, `sha256`); a estrutura (Analítico) só é regravada quando chega um `sha256` novo.
+3. SP é lido sempre (para o fallback) mas só vira `Referencia` se pedida em `--uf`.
+4. Unidades `M/MES` e `DIA` (4 composições e 1) estavam fora do mapa e foram adicionadas como "mantidas como vieram".
+5. O comando valida o mês das abas contra `--base`, mas **não** valida contagens fixas (4.878/10.599/56.568): relata as contagens e confere que CSx e Analítico têm as mesmas composições.
+
+**Ainda não verificado:** termos de uso da Caixa, limite de armazenamento e extensões do Neon, download automático, segundo mês de arquivo (estabilidade do layout), teste de carga no Neon real (só PostgreSQL local).

@@ -186,3 +186,15 @@ templates/         telas de login e troca de senha
 - Todos os usuários com acesso a uma obra têm os mesmos poderes nela (exceto apagar tudo e importar, que são só do dono). Papéis por módulo (engenharia, suprimentos, financeiro) ficam para a próxima fase.
 - Não há "esqueci minha senha" por e-mail: o administrador redefine.
 - Não há histórico de quem alterou o quê, além de quem aprovou cada medição.
+
+
+## Base SINAPI (consulta)
+
+O app `sinapi` guarda composições, insumos e preços do SINAPI por UF, mês e regime (somente leitura). Ainda não aparece na tela do Prumo (integração é a próxima fase). Para carregar um mês, **no seu computador** (não na Vercel), com `DATABASE_URL` apontando para o banco:
+
+```
+pip install -r requirements-etl.txt
+python manage.py carregar_sinapi --arquivo SINAPI_Referencia_2026_09.xlsx --base 2026-09 --uf SE BA --regime sd cd
+```
+
+A carga é tudo ou nada, confere o custo de cada composição contra o publicado e não repete o mesmo arquivo.

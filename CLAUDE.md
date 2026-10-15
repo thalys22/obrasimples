@@ -7,7 +7,7 @@ Fale com o usuário em português (Brasil). O dono do projeto prefere crítica d
 ## Comandos
 
 - Rodar local: `export DJANGO_DEBUG=1 && python manage.py migrate && python manage.py runserver`
-- Testes: `DJANGO_DEBUG=1 python manage.py test obras` (43 testes; devem passar em SQLite e PostgreSQL 16)
+- Testes: `DJANGO_DEBUG=1 python manage.py test obras sinapi` (`obras` + `sinapi`: 81 testes; devem passar em SQLite e PostgreSQL 16; os do `sinapi` precisam de openpyxl e são pulados sem ele)
 - Para testar em PostgreSQL: `DATABASE_URL=postgres://usuario@127.0.0.1:<porta>/<banco>`
 
 ## Estrutura
@@ -29,6 +29,8 @@ Fale com o usuário em português (Brasil). O dono do projeto prefere crítica d
 - Não faça `git push` sem o pedido do dono: cada push no `main` faz deploy em produção.
 - Teste o fluxo de tela com Playwright quando mexer no frontend; a biblioteca `xlsx` do navegador vem de CDN, então sirva uma cópia local no teste se a rede bloquear.
 
-## Próximo trabalho: integração com o SINAPI
+## SINAPI
 
-O desenho completo, já validado com o arquivo real `SINAPI_Referência_2026_09.xlsx`, está em **`docs/sinapi-integracao.md`**. Leia antes de começar. Resumo: app Django separado `sinapi` (somente leitura), carga por comando `carregar_sinapi` fora da Vercel, composição copiada para a obra ao usar (nunca referência viva), preço de São Paulo usado como fallback quando falta preço local e sempre identificado na tela. Nada disso está implementado ainda.
+Desenho em **`docs/sinapi-integracao.md`**. **Fase 1 implementada** (app `sinapi`, somente leitura): modelos, `carregar_sinapi` (rodar fora da Vercel, `pip install -r requirements-etl.txt`), `sinapi/servico.py` (única porta de entrada; o resto do Prumo não importa os models) e 27 testes com planilha-fixture montada em `sinapi/tests.py`. A carga real de SE+BA (sd, cd) foi medida: 34-41 s, ~214 MB de memória, ~31 MB no PostgreSQL; reproduz 8.372/71/0 (SE) e 8.394/49/0 (BA). **Fase 2 (integração no Prumo: importar composição para a obra, endpoints, aba "Pelo SINAPI") ainda não feita.**
+
+Comando: `python manage.py carregar_sinapi --arquivo <xlsx> --base 2026-09 --uf SE BA --regime sd cd` (idempotente por sha256; tudo ou nada).
