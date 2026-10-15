@@ -11,7 +11,7 @@ from .models import Carga, Referencia
 @admin.register(Referencia)
 class ReferenciaAdmin(admin.ModelAdmin):
     """Meses do SINAPI já carregados. Somente leitura: a base só muda pela carga (botão \"Carregar planilha\")."""
-    list_display = ("uf", "mes", "regime", "composicoes_com_custo", "insumos_com_preco", "carregada_em")
+    list_display = ("uf", "mes", "regime", "composicoes_com_custo", "insumos_com_preco", "carga")
     list_filter = ("uf", "regime", "data_base")
     ordering = ("-data_base", "uf", "regime")
     change_list_template = "admin/sinapi/referencia/change_list.html"
@@ -20,11 +20,15 @@ class ReferenciaAdmin(admin.ModelAdmin):
     def mes(self, r):
         return f"{r.data_base:%m/%Y}"
 
-    @admin.display(description="Composições com custo")
+    @admin.display(description="Carga", ordering="carregada_em")
+    def carga(self, r):
+        return f"{r.carregada_em:%d/%m/%Y}"
+
+    @admin.display(description="Comp. com custo")
     def composicoes_com_custo(self, r):
         return r.custos.filter(custo_publicado__isnull=False).count()
 
-    @admin.display(description="Insumos com preço")
+    @admin.display(description="Insumos c/ preço")
     def insumos_com_preco(self, r):
         return r.precos.filter(preco__isnull=False).count()
 

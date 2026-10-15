@@ -7,20 +7,47 @@
 {% block extrastyle %}{{ block.super }}
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Mesma identidade do site: verde do menu, grafite e laranja de destaque */
-  :root, html[data-theme="light"] {
-    --primary:#1F4A35; --secondary:#1C2533; --accent:#E07B24;
-    --header-bg:#1C2533; --header-color:#fff; --header-branding-color:#E07B24; --header-link-color:#fff;
-    --breadcrumbs-bg:#1F4A35; --breadcrumbs-link-fg:#fff; --breadcrumbs-fg:#cfe3d8;
-    --module-header-bg:#1F4A35; --module-header-color:#fff;
-    --link-fg:#1F4A35; --link-hover-color:#E07B24; --body-bg:#F3F4F6; --hairline-color:#E3E6EA;
-    --button-bg:#1F4A35; --button-hover-bg:#17382a; --default-button-bg:#E07B24; --default-button-hover-bg:#c46a1c;
-    --selected-row:#fdf1e6; --object-tools-bg:#1C2533; --object-tools-hover-bg:#1F4A35;
+  /* Mesma identidade do site (sempre claro, como o app): grafite, verde do menu e laranja de destaque */
+  html:root, html[data-theme="light"]:root, html[data-theme="dark"]:root {
+    color-scheme: light;
+    --primary:#1F4A35; --secondary:#1C2533; --accent:#E07B24; --primary-fg:#fff;
+    --body-fg:#1C2533; --body-bg:#F3F4F6; --body-quiet-color:#5B6573; --body-medium-color:#3a4452; --body-loud-color:#1C2533;
+    --header-color:#fff; --header-branding-color:#E07B24; --header-bg:#1C2533; --header-link-color:#fff;
+    --breadcrumbs-fg:#cfe3d8; --breadcrumbs-link-fg:#fff; --breadcrumbs-bg:#1F4A35;
+    --link-fg:#1F4A35; --link-hover-color:#E07B24; --link-selected-fg:#1F4A35;
+    --hairline-color:#E3E6EA; --border-color:#D5D9DF;
+    --error-fg:#B3261E; --message-success-bg:#E6F2EA; --message-warning-bg:#FFF4E0; --message-error-bg:#FCE9E7;
+    --darkened-bg:#F3F4F6; --selected-bg:#E3E6EA; --selected-row:#FDF1E6;
+    --button-fg:#fff; --button-bg:#1F4A35; --button-hover-bg:#17382a;
+    --default-button-bg:#E07B24; --default-button-hover-bg:#C46A1C;
+    --close-button-bg:#5B6573; --close-button-hover-bg:#1C2533;
+    --delete-button-bg:#B3261E; --delete-button-hover-bg:#8f1d17;
+    --object-tools-fg:#fff; --object-tools-bg:#1C2533; --object-tools-hover-bg:#1F4A35;
+    --font-family-primary: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   body, input, select, textarea, button { font-family: Inter, system-ui, sans-serif; }
+  .theme-toggle { display: none !important; }
   #header { border-bottom: 3px solid #E07B24; }
-  .module, #changelist .paginator { border-radius: 10px; overflow: hidden; }
-  .module caption, .module h2, .module th { text-transform: none; letter-spacing: 0; }
+  #content { padding-top: 18px; }
+  #content > h1 { font-size: 20px; font-weight: 700; color: #1C2533; }
+  #nav-sidebar { background: #fff; border-right: 1px solid #E3E6EA; }
+  .module { background: #fff; border: 1px solid #E3E6EA; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(28,37,51,.04); }
+  .module caption, .module h2, #nav-sidebar .module caption { background: #1C2533; color: #fff; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .module caption a, .module caption a:link, .module caption a:visited { color: #fff; }
+  #changelist.module, #changelist .module { border: 0; box-shadow: none; background: transparent; overflow: visible; border-radius: 0; }
+  #changelist table { background: #fff; }
+  #changelist-filter { background: #fff; border: 1px solid #E3E6EA; border-radius: 12px; overflow: hidden; }
+  #changelist-filter h2 { background: #1C2533; color: #fff; }
+  #changelist table thead th { background: #F3F4F6; color: #5B6573; font-size: 11px; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; border-bottom: 1px solid #E3E6EA; }
+  #changelist table th, #changelist table td { padding: 8px 8px; }
+  #changelist .changelist-form-container, #changelist .results { background: transparent; }
+  #changelist table thead th a, #changelist table thead th .text a { color: #5B6573; }
+  #result_list tbody tr:hover td, #result_list tbody tr:hover th { background: #FDF1E6; }
+  td, th { border-bottom-color: #E3E6EA; }
+  .button, input[type=submit], input[type=button], .submit-row input, a.button { border-radius: 8px; }
+  input[type=text], input[type=password], input[type=email], input[type=number], input[type=url], select, textarea { border-radius: 8px; border: 1px solid #D5D9DF; background: #fff; color: #1C2533; }
+  .object-tools a { border-radius: 999px; }
+  .paginator { background: #fff; border-color: #E3E6EA; }
 </style>
 {% endblock %}
 
