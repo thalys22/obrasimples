@@ -30,6 +30,11 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED",
 # Vercel: aceita automaticamente os endereços .vercel.app do projeto
 NA_VERCEL = os.environ.get("VERCEL") == "1"
 if NA_VERCEL:
+    # Qualquer endereço .vercel.app deste projeto (ex.: prumo.vercel.app, obrasimples.vercel.app).
+    # A Vercel só entrega aqui os domínios ligados a este projeto. Domínio próprio (ex.: .com.br):
+    # adicione em DJANGO_ALLOWED_HOSTS e DJANGO_CSRF_TRUSTED.
+    ALLOWED_HOSTS.append(".vercel.app")
+    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
     for var in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
         host = os.environ.get(var)
         if host:
