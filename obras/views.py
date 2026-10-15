@@ -35,6 +35,10 @@ def api(metodos):
             except ValueError:
                 return JsonResponse({"erro": "Requisição inválida."}, status=400)
             obra = S.obter_obra(request.user, request.session.get("obra_id"))
+            if obra is None:
+                if request.method == "GET":
+                    return JsonResponse({"estado": S.estado_sem_obra(request.user)})
+                return JsonResponse({"erro": "Nenhuma obra foi liberada para você ainda. Fale com o administrador."}, status=400)
             request.session["obra_id"] = obra.pk
             try:
                 extra = fn(request, obra, corpo, *args, **kwargs) or {}

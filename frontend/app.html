@@ -739,6 +739,7 @@ function irPara(tab, anchor){
 /* ---------------------- Avisos (sino + mural) ---------------------- */
 function avisos(){
   const out = [];
+  if(state.semObra) return out;
   if(!state.orcamento.length) out.push({kind:'warn', titulo:'Cadastre o orçamento da obra', sub:'Sem orçamento, nada pode ser comparado', tab:'orcamento', anchor:'form-orc'});
   state.pagamentos.filter(vencido).sort((a,b)=>a.dataProgramada.localeCompare(b.dataProgramada)).forEach(p=>
     out.push({kind:'danger', titulo:'Pagamento vencido: '+p.origem, sub:fmtMoney(p.valor)+' · venceu em '+fmtDate(p.dataProgramada), tab:'financeiro', anchor:'sec-pag'}));
@@ -888,7 +889,7 @@ function renderTopbar(){
 
 function updateTopbar(){
   const o = state.obra;
-  document.getElementById('obra-chip-txt').textContent = (o.nome||'Minha obra') + (o.prazo ? ' · entrega '+fmtDate(o.prazo) : '');
+  document.getElementById('obra-chip-txt').textContent = state.semObra ? 'Nenhuma obra liberada' : (o.nome||'Minha obra') + (o.prazo ? ' · entrega '+fmtDate(o.prazo) : '');
   const nObras = (state.obras||[]).length;
   document.getElementById('obra-chip-n').textContent = nObras>1 ? ' ▾ '+nObras+' obras' : ' ▾';
   const u = state.usuario || {nome:'?'};
@@ -897,7 +898,7 @@ function updateTopbar(){
   dot.textContent = n; dot.hidden = !n;
 }
 function renderStatus(){
-  document.getElementById('statusbar').innerHTML = `<span>Obra: <b>${esc(state.obra.nome||'Minha obra')}</b></span><span>${state.exemplo?'Dados de exemplo · ':''}Salvo no servidor</span><span>ObraSimples · protótipo v0.3</span>`;
+  document.getElementById('statusbar').innerHTML = `<span>Obra: <b>${state.semObra ? 'nenhuma liberada' : esc(state.obra.nome||'Minha obra')}</b></span><span>${state.exemplo?'Dados de exemplo · ':''}Salvo no servidor</span><span>ObraSimples · protótipo v0.3</span>`;
 }
 
 /* Cliques em qualquer elemento com data-go (menu, mural, avisos, atalhos) */
@@ -1846,6 +1847,19 @@ function renderAll(){
   renderMenu(); updateTopbar(); renderStatus();
   const map = {inicio:renderInicio, guia:renderGuia, dados:renderDados, dashboard:renderDashboard, orcamento:renderOrcamento, suprimentos:renderSuprimentos, estoque:renderEstoque, contratos:renderContratos, financeiro:renderFinanceiro};
   if(!map[currentTab]) currentTab = 'inicio';
+  if(state.semObra){
+    const su = state.usuario && state.usuario.superusuario;
+    document.getElementById('main').innerHTML = `
+      <div class="card" style="max-width:640px;margin:40px auto;text-align:center;padding:32px 28px;">
+        <h2 class="section-title" style="margin-bottom:10px;">Nenhuma obra liberada para você ainda</h2>
+        <p class="helptext" style="margin:0 0 18px;font-size:14px;">${su
+          ? 'Você é administrador. Crie uma obra no painel, escolha o dono e, se quiser, libere o acesso para outras pessoas.'
+          : 'Assim que o administrador do ObraSimples vincular uma obra ao seu usuário, ela aparece aqui. Fale com ele e depois recarregue a página.'}</p>
+        ${su ? '<a class="primary" href="/admin/obras/obra/add/" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;">Criar obra no painel</a>' : '<button class="primary" onclick="location.reload()">Recarregar</button>'}
+      </div>`;
+    salvar();
+    return;
+  }
   const f = funcaoDe(currentTab, currentAnchor), mod = moduloDaTab(currentTab);
   const crumb = currentTab==='inicio' ? '' : `<div class="crumb">${esc(mod.label)} / <b>${esc(f ? f.label : '')}</b></div>`;
   document.getElementById('main').innerHTML = crumb + map[currentTab]();

@@ -12,6 +12,9 @@ class Base(TestCase):
     def setUp(self):
         self.ana = User.objects.create_user("ana", password="senha-forte-123", first_name="Ana", last_name="Lima")
         self.beto = User.objects.create_user("beto", password="senha-forte-456")
+        # O administrador cria a obra da Ana com os dados de exemplo
+        self.obra_ana = Obra.objects.create(dono=self.ana)
+        S.carregar_exemplo(self.obra_ana)
         self.c = Client()
         self.c.force_login(self.ana)
 
@@ -52,12 +55,22 @@ class AcessoTests(Base):
         r = c.post("/api/fornecedores", json.dumps({"nome": "X"}), content_type="application/json")
         self.assertEqual(r.status_code, 403)
 
-    def test_primeiro_acesso_cria_obra_de_exemplo(self):
+    def test_obra_liberada_aparece_no_login(self):
         e = self.estado()
         self.assertTrue(e["exemplo"])
         self.assertEqual(len(e["orcamento"]), 8)
         self.assertEqual(e["usuario"]["nome"], "Ana Lima")
-        self.assertEqual(Obra.objects.filter(dono=self.ana).count(), 1)
+
+    def test_usuario_sem_obra_nao_ganha_obra_automatica(self):
+        cb = Client(); cb.force_login(self.beto)
+        e = self.estado(cb)
+        self.assertTrue(e["semObra"])
+        self.assertEqual(e["obras"], [])
+        self.assertEqual(Obra.objects.filter(dono=self.beto).count(), 0)
+        r = self.post("/api/fornecedores", {"nome": "X"}, client=cb)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Nenhuma obra", r.json()["erro"])
+        self.assertEqual(Obra.objects.filter(dono=self.beto).count(), 0)
 
 
 class IsolamentoTests(Base):
@@ -77,7 +90,7 @@ class IsolamentoTests(Base):
         self.assertEqual(med_ana.status, "pendente")
 
     def test_nao_usa_material_de_outro_usuario(self):
-        self.estado()
+        S.carregar_exemplo(Obra.objects.create(dono=self.beto))
         cb = Client(); cb.force_login(self.beto)
         e_beto = self.estado(cb)
         mat_ana = Material.objects.filter(obra__dono=self.ana).first()
@@ -273,3 +286,68 @@ class AdminPermissoesTests(TestCase):
         })
         self.gestor.refresh_from_db()
         self.assertFalse(self.gestor.is_superuser)
+
+
+class ExcluirObraTests(TestCase):
+    def test_superusuario_exclui_obra_com_todos_os_dados(self):
+        root = User.objects.create_superuser("root", "r@x.com", "senha-forte-789")
+        dono = User.objects.create_user("dono", password="senha-forte-222")
+        obra = Obra.objects.create(dono=dono, nome="Para apagar")
+        S.carregar_exemplo(obra)
+        c = Client(); c.force_login(root)
+        r = c.get(f"/admin/obras/obra/{obra.pk}/delete/")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "protected")
+        r = c.post(f"/admin/obras/obra/{obra.pk}/delete/", {"post": "yes"})
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(Obra.objects.filter(pk=obra.pk).exists())
+        self.assertEqual(Material.objects.filter(obra_id=obra.pk).count(), 0)
+
+    def test_dono_nao_fica_como_membro(self):
+        root = User.objects.create_superuser("root", "r@x.com", "senha-forte-789")
+        dono = User.objects.create_user("dono", password="senha-forte-222")
+        c = Client(); c.force_login(root)
+        r = c.post("/admin/obras/obra/add/", {"dono": dono.pk, "membros": [dono.pk], "nome": "Nova", "cliente": "",
+                                               "prazo": "", "valor_contratado": "0"})
+        self.assertEqual(r.status_code, 302, r.content[:500])
+        obra = Obra.objects.get(nome="Nova")
+        self.assertFalse(obra.membros.filter(pk=dono.pk).exists())
+        self.assertEqual(obra.orcamento.count(), 0)  # obra nova começa vazia
+
+
+class AdminPorObraTests(TestCase):
+    def setUp(self):
+        self.root = User.objects.create_superuser("root", "r@x.com", "senha-forte-789")
+        self.a = Obra.objects.create(dono=self.root, nome="Obra A"); S.carregar_exemplo(self.a)
+        self.a.nome = "Obra A"; self.a.save()
+        dono_b = User.objects.create_user("b", password="senha-forte-333")
+        self.b = Obra.objects.create(dono=dono_b, nome="Obra B"); S.carregar_exemplo(self.b)
+        self.b.nome = "Obra B"; self.b.save()
+        self.c = Client(); self.c.force_login(self.root)
+
+    def test_lista_mostra_e_filtra_por_obra(self):
+        r = self.c.get("/admin/obras/notafiscal/")
+        self.assertContains(r, "Obra A ·")
+        self.assertContains(r, "Obra B ·")
+        r = self.c.get(f"/admin/obras/notafiscal/?obra__id__exact={self.a.pk}")
+        self.assertContains(r, "Obra A ·")
+        self.assertNotContains(r, "Obra B ·")
+
+    def test_lancamentos_sao_so_consulta(self):
+        nf = self.a.notas.first()
+        self.assertEqual(self.c.get("/admin/obras/notafiscal/add/").status_code, 403)
+        r = self.c.get(f"/admin/obras/notafiscal/{nf.pk}/change/")
+        self.assertEqual(r.status_code, 200)  # abre para ver
+        r = self.c.post(f"/admin/obras/notafiscal/{nf.pk}/change/", {"numero": "ALTERADA"})
+        nf.refresh_from_db()
+        self.assertNotEqual(nf.numero, "ALTERADA")
+        self.assertEqual(self.c.post(f"/admin/obras/notafiscal/{nf.pk}/delete/", {"post": "yes"}).status_code, 403)
+
+    def test_nao_liga_cadastro_a_outra_obra(self):
+        emp_b = self.b.empreiteiros.first()
+        item_a = self.a.orcamento.first()
+        r = self.c.post("/admin/obras/contrato/add/", {"obra": self.a.pk, "empreiteiro": emp_b.pk, "item": item_a.pk,
+                                                       "valor_contratado": "1000", "forma_pagamento": "x"})
+        self.assertEqual(r.status_code, 200)  # voltou com erro
+        self.assertContains(r, "pertence a outra obra")
+        self.assertFalse(self.a.contratos.filter(empreiteiro=emp_b).exists())

@@ -17,7 +17,7 @@ EXPLICA_ACESSO_APP = """
 <b>Ativo</b>: a pessoa consegue entrar no ObraSimples com usuário e senha.
 Desmarque para <b>bloquear</b> o acesso sem apagar nada; a obra e os lançamentos dela continuam guardados.
 <br>Para vincular uma obra a esta pessoa, abra a obra em <i>Obras</i> e escolha-a como <b>Dono</b> ou em
-<b>Outros usuários com acesso</b>. Se ela não tiver nenhuma obra, ganha uma com dados de exemplo no primeiro acesso.
+<b>Outros usuários com acesso</b>. Sem nenhuma obra liberada, ela entra no app e vê só um aviso.
 </div>"""
 
 EXPLICA_ADMIN = """
@@ -77,7 +77,7 @@ class UsuarioAdmin(UserAdmin):
             "classes": ("wide",),
             "fields": ("username", "password1", "password2"),
             "description": "Defina o usuário e a senha inicial. Depois de salvar, preencha o nome e o e-mail e "
-                           "vincule uma obra em <i>Obras</i> (ou deixe a pessoa receber uma obra de exemplo no primeiro acesso).",
+                           "vincule uma obra a ela em <i>Obras</i>. Sem obra liberada, a pessoa só vê um aviso ao entrar.",
         }),
     )
 
@@ -134,7 +134,7 @@ class UsuarioAdmin(UserAdmin):
             return "—"
         obras = Obra.objects.filter(Q(dono=u) | Q(membros=u)).distinct().order_by("id")
         if not obras:
-            return "Nenhuma ainda. Ela recebe uma obra de exemplo no primeiro acesso."
+            return "Nenhuma. Ao entrar no app, ela verá o aviso de que nenhuma obra foi liberada."
         return format_html_join(
             format_html("<br>"), '<a href="{}">{}</a> ({})',
             ((reverse("admin:obras_obra_change", args=[o.pk]), o.nome, "dono" if o.dono_id == u.pk else "acesso compartilhado") for o in obras),

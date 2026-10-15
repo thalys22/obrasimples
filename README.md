@@ -5,7 +5,7 @@ Controle de obra para pequenas construtoras, agora com **login, banco de dados e
 - Cada usuário entra com usuário e senha e tem **a própria obra**. Um usuário não vê a obra de outro.
 - Você (administrador) cria, bloqueia e troca a senha dos usuários, e vê os dados de todas as obras em `/admin`.
 - As regras de negócio (custo médio, baixa de estoque, limite de 100% nas medições, pagamentos automáticos) rodam no servidor. Ninguém consegue burlar pelo navegador.
-- No primeiro acesso, cada usuário recebe uma obra com **dados de exemplo** para aprender. Ele pode zerar e começar a própria obra em *Dados da obra e planilhas*.
+- **Quem cria e libera obras é o administrador.** Ninguém ganha obra automaticamente: um usuário sem obra liberada vê só um aviso ao entrar. Para dar uma obra de exemplo a alguém, crie a obra e use a ação *Apagar dados e carregar o exemplo*.
 
 ---
 
@@ -39,11 +39,11 @@ Entre em **/admin** (ou pelo seu avatar no canto superior direito → *Administr
 
 | Para… | Faça |
 |---|---|
-| Criar um testador | *Usuários → Adicionar usuário*. Defina usuário e senha. Depois preencha nome e sobrenome (aparecem no app). |
+| Criar um testador | *Usuários → Adicionar usuário*. Defina usuário e senha. Depois preencha nome e sobrenome (aparecem no app) e vincule uma obra a ele (linha abaixo). |
 | Bloquear o acesso | Abra o usuário e desmarque **Ativo**. Ele não consegue mais entrar e os dados dele ficam guardados. |
 | Trocar a senha de alguém | Abra o usuário → link *"este formulário"* no campo Senha. |
 | Dar acesso ao /admin para outra pessoa | Marque **Membro da equipe** (vê o admin) e, se quiser, **Superusuário** (pode tudo). |
-| Vincular uma obra a alguém | *Obras* → abra a obra → escolha o **Dono** ou adicione a pessoa em **Outros usuários com acesso**. Para uma obra nova, *Adicionar obra*, escolha o dono e salve (ela começa vazia). |
+| Vincular uma obra a alguém | *Obras* → abra a obra → escolha o **Dono** ou adicione a pessoa em **Outros usuários com acesso**. Para uma obra nova, *Adicionar obra*, escolha o dono e salve (ela começa vazia). Para excluir uma obra e todos os lançamentos dela, marque-a na lista e use a ação *Excluir*. |
 | Entender cada permissão | Abra o usuário: a seção *Acesso ao painel de administração* explica Membro da equipe, Superusuário, Grupos e Permissões. |
 | Ver a obra de um testador | *Obras* lista todas, com dono e total orçado. Notas, consumos, medições e pagamentos têm filtro **por usuário** na lateral. |
 | Zerar ou recarregar o exemplo de uma obra | Em *Obras*, marque a obra, escolha a ação no menu *Ação* e clique *Ir*. |

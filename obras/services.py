@@ -72,15 +72,18 @@ def obras_do_usuario(usuario):
 
 
 def obter_obra(usuario, obra_id=None):
-    """Obra ativa do usuário. Se ele ainda não tem nenhuma, cria uma com dados de exemplo."""
+    """Obra ativa do usuário, entre as liberadas para ele. Nunca cria obra:
+    quem cria e libera obras é o administrador. Retorna None se não houver nenhuma."""
     qs = obras_do_usuario(usuario)
     obra = qs.filter(pk=obra_id).first() if obra_id else None
-    obra = obra or qs.first()
-    if obra is None:
-        with transaction.atomic():
-            obra = Obra.objects.create(dono=usuario)
-            carregar_exemplo(obra)
-    return obra
+    return obra or qs.first()
+
+
+@transaction.atomic
+def excluir_obra(obra):
+    """Apaga a obra e todos os lançamentos dela (na ordem que as travas internas exigem)."""
+    limpar(obra)
+    obra.delete()
 
 
 def pode_apagar_tudo(obra, usuario):
@@ -402,6 +405,20 @@ def carregar_exemplo(obra):
 
 
 # ---------------------------------------------------------------- leitura (formato que o app usa)
+def estado_sem_obra(usuario):
+    """Estado para quem ainda não tem obra liberada: listas vazias e o aviso."""
+    return {
+        "semObra": True,
+        "obra": {"nome": "", "cliente": "", "prazo": "", "valorContratado": 0}, "exemplo": False,
+        "orcamento": [], "etapaAvanco": {}, "fornecedores": [], "materiais": [], "notasFiscais": [], "pedidos": [],
+        "empreiteiros": [], "contratos": [], "medicoes": [], "pagamentos": [],
+        "usuario": {"nome": usuario.get_full_name() or usuario.username, "login": usuario.username,
+                    "admin": usuario.is_staff, "superusuario": usuario.is_superuser},
+        "obraId": None, "souDono": False, "donoNome": "", "obras": [],
+        "seq": 10 ** 9, "nextIds": {"nf": 1, "pedido": 1, "contrato": 1, "medicao": 1, "pagamento": 1},
+    }
+
+
 def estado(obra, usuario):
     f = float
     iso = lambda d: d.isoformat() if d else ""
@@ -423,7 +440,9 @@ def estado(obra, usuario):
         "medicoes": [{"id": m.pk, "contratoId": m.contrato_id, "data": iso(m.data), "percentual": f(m.percentual), "valor": f(m.valor), "status": m.status} for m in obra.medicoes.all()],
         "pagamentos": [{"id": p.pk, "tipo": p.tipo, "origem": p.origem, "orcamentoItemId": p.item_id, "valor": f(p.valor), "dataProgramada": iso(p.data_programada),
                         "dataPagamento": iso(p.data_pagamento) or None, "status": p.status, "medicaoId": p.medicao_id} for p in obra.pagamentos.all()],
-        "usuario": {"nome": usuario.get_full_name() or usuario.username, "login": usuario.username, "admin": usuario.is_staff},
+        "semObra": False,
+        "usuario": {"nome": usuario.get_full_name() or usuario.username, "login": usuario.username,
+                    "admin": usuario.is_staff, "superusuario": usuario.is_superuser},
         "obraId": obra.pk,
         "souDono": pode_apagar_tudo(obra, usuario),
         "donoNome": obra.dono.get_full_name() or obra.dono.username,
