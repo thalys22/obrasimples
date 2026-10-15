@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>[hidden]{display:none!important}</style>
 <title>Prumo</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2030%2030%22%20fill%3D%22none%22%3E%3Crect%20width%3D%2230%22%20height%3D%2230%22%20rx%3D%227%22%20fill%3D%22%231C2533%22%2F%3E%3Cpath%20d%3D%22M10%2023V7h6.2a4.8%204.8%200%200%201%200%209.6H10%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.6%22%20fill%3D%22none%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M19.5%2016.6V21%22%20stroke%3D%22%23E07B24%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2219.5%22%20cy%3D%2222.6%22%20r%3D%222%22%20fill%3D%22%23E07B24%22%2F%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -790,12 +791,7 @@ function renderTopbar(){
     <button class="icon-btn menu-toggle" id="btn-menu" aria-label="Abrir menu">${ic('menu')}</button>
     <button class="icon-btn menu-reopen" id="btn-reopen" aria-label="Mostrar menu" title="Mostrar menu">${ic('menu')}</button>
     <div class="brand">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-        <rect width="30" height="30" rx="6" fill="#1C2533"/>
-        <path d="M15 4.5 V11" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
-        <rect x="12.6" y="10.6" width="4.8" height="2.4" rx="0.8" fill="#FFFFFF"/>
-        <path d="M10.4 13.8 H19.6 Q19.6 18.2 15 25.5 Q10.4 18.2 10.4 13.8 Z" fill="#E07B24"/>
-      </svg>
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect width="30" height="30" rx="7" fill="#1C2533"/><path d="M10 23V7h6.2a4.8 4.8 0 0 1 0 9.6H10" stroke="#fff" stroke-width="2.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="M19.5 16.6V21" stroke="#E07B24" stroke-width="1.5" stroke-linecap="round"/><circle cx="19.5" cy="22.6" r="2" fill="#E07B24"/></svg>
       <div><b>Prumo</b><small>Controle de obra</small></div>
     </div>
     <div class="notif-wrap" id="obra-wrap"><button class="obra-chip" id="obra-chip" title="Trocar de obra"><i></i><span id="obra-chip-txt"></span><span id="obra-chip-n"></span></button><div class="dropdown wide" id="obra-list" hidden style="left:0;right:auto;"></div></div>
